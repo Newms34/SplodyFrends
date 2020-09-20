@@ -26,6 +26,7 @@ class Cell {
         this.placedBy = null;
         this.weaponType = null;
         this.countDown = null;
+        this.boomStyle = 0;
         this.slippery = false;
     }
 }
@@ -145,7 +146,7 @@ class GameCtrl {
                 if (targCell.type == '#') {
                     //dirt; break, then allow move next turn
                     map[currPos[1]][currPos[0]].type = 'X';
-                    self.updateBoard(p.player, self)
+                    self.updateBoard(room.roomId, self)
                 } else if (targCell.type == 'X' || targCell.type == '_' || targCell.type == '?') {
                     playerObj.pos.x = currPos[0];
                     playerObj.pos.y = currPos[1];
@@ -162,7 +163,7 @@ class GameCtrl {
                         targCell.type = '_';
                     }
                     //finally, send updated board
-                    self.updateBoard(p.player, self)
+                    self.updateBoard(room.roomId, self)
                 }
             }
 
@@ -170,7 +171,29 @@ class GameCtrl {
 
         })
         socket.on('getBoard', ur => {
-            self.updateBoard(ur.playerId, self);
+            self.updateBoard(ur.room, self);
+        })
+        socket.on('killCells',k=>{
+            console.log('killing cells',k)
+            let room= this.rooms.find(q=>q.roomId ==k.room);
+            console.log(k.cells.length);
+            k.cells.forEach(p=>{
+                // console.log('trying to find cell',p)
+                let c = room.board.map[p[0]] && room.board.map[p[0]][p[1]]
+                if(!c) return false;
+                c.type='_';
+                //remove ice, destroy bombs if present
+                c.slippery=false;
+                if(c.weaponType===0 || c.weaponType===1){
+                    c.weaponType=null;
+                }
+                room.players.forEach(pl=>{
+                    if(pl.pos.x == p[1] && pl.pos.y==p[0]){
+                        socket.emit('dead',pl.playerId);
+                    }
+                })
+            })
+            self.updateBoard(k.room,self);
         })
         socket.on('attemptFire', d => {
             console.log('user', d.player.id, 'attempted to fire ammo #', d.ammo)
@@ -198,13 +221,11 @@ class GameCtrl {
             }
             // socket.emit('fired', d)
             socket.emit('changeAmmo', { player: d.player.id, ammo: d.ammo, subtract: true })
-            self.updateBoard(d.player.id, self)
+            self.updateBoard(room.roomId, self)
         })
     }
-    updateBoard(pid, self) {
-        const playerRoom = self.allNames.find(q => q.id == pid).roomId,
-            room = self.rooms.find(r => r.roomId == playerRoom),//the full game room
-            playerObj = room.players.find(pl => pl.playerId == pid);
+    updateBoard(rid, self) {
+        const room = self.rooms.find(r => r.roomId == rid);//the full game room
         self.io.emit('boardUpd', {
             map: room.board.map,
             room: room.roomId,

@@ -24,7 +24,7 @@ const socket = io(),
         data: {
             players: [],
             isNamed: false,
-            msgTimeout:null,
+            msgTimeout: null,
             player: {
                 id: Math.floor(Math.random() * 999999999999).toString(32),
                 avatar: {
@@ -167,12 +167,92 @@ const socket = io(),
                 } else if ([48, 49, 50, 51, 52, 53, 54, 55, 56, 57].includes(e.which)) {
                     e.preventDefault();
                     e.stopPropagation();
-                    this.attemptFire(e.which-49)
+                    this.attemptFire(e.which - 49)
                 }
             },
-            explode(x,y){
+            explode(y,x) {
                 // console.log('explosion happens')
-                let startPos = [x,y];
+                let remains = {
+                        left: 10,
+                        right: 10,
+                        up: 10,
+                        down: 10,
+                    }, 
+                    leftPos = [x,y],
+                    upPos = [x,y],
+                    rightPos = [x,y],
+                    downPos = [x,y],
+                    deadCells=[[x,y]];
+                
+                this.room.map[x][y].boomStyle=3;
+                //up to 10 in each direction
+                while (remains.up>0 || remains.left>0 || remains.right>0 || remains.down>0) {
+                    if(remains.left>0){
+                        remains.left--;
+                        leftPos[0]--;
+                        let leftCell = this.room.map[leftPos[0]] && this.room.map[leftPos[0]][leftPos[1]];
+                        if(!leftCell){
+                            remains.left=0;
+                        }else{
+                            if(leftCell.type=='#' || leftCell.type=='*'){
+                                remains.left--;
+                            }
+                            leftCell.type='_';
+                            leftCell.boomStyle=1;
+                        }
+                        deadCells.push([...leftPos]);
+                    }
+                    if(remains.right>0){
+                        remains.right--;
+                        rightPos[0]++;
+                        let rightCell = this.room.map[rightPos[0]] && this.room.map[rightPos[0]][rightPos[1]];
+                        if(!rightCell){
+                            remains.right=0;
+                        }else{
+                            if(rightCell.type=='#' || rightCell.type=='*'){
+                                remains.right--;
+                            }
+                            rightCell.type='_';
+                            rightCell.boomStyle=1;
+                        }
+                        deadCells.push([...rightPos]);
+                    }
+                    if(remains.up>0){0
+                        remains.up--;
+                        upPos[1]--;
+                        let upCell = this.room.map[upPos[0]] && this.room.map[upPos[0]][upPos[1]];
+                        if(!upCell){
+                            remains.up=0;
+                        }else{
+                            if(upCell.type=='#' || upCell.type=='*'){
+                                remains.up--;
+                            }
+                            upCell.type='_';
+                            upCell.boomStyle=2;
+                        }
+                        deadCells.push([...upPos]);
+                    }
+                    if(remains.down>0){0
+                        remains.down--;
+                        downPos[1]++;
+                        let downCell = this.room.map[downPos[0]] && this.room.map[downPos[0]][downPos[1]];
+                        if(!downCell){
+                            remains.down=0;
+                        }else{
+                            if(downCell.type=='#' || downCell.type=='*'){
+                                remains.down--;
+                            }
+                            downCell.type='_';
+                            downCell.boomStyle=2;
+                        }
+                        deadCells.push([...downPos]);
+                    }
+                }
+                return deadCells;
+            },
+            nuke(x,y){
+                console.log('nuke currently disabled!')
+                return [];
             }
         },
         computed: {
@@ -190,12 +270,12 @@ const socket = io(),
             });
             socket.on('misfire', p => {
                 if (p.player.id != this.player.id) return false;
-                console.log('attempted',null)
+                console.log('attempted', null)
                 return this.doMsg('Out of Ammo', `You have no more ${this.ammoCat[p.ammo].name}s!`, 2000);
             });
             socket.on('changeAmmo', p => {
                 if (p.player != this.player.id) return false;
-                this.player.ammo[p.ammo]+=p.subtract?-1:1;
+                this.player.ammo[p.ammo] += p.subtract ? -1 : 1;
                 // console.log(`Got new ${this.ammoCat[p.ammo].name}! Player now`, this.player)
             });
             socket.on('disconnect', d => {
@@ -217,7 +297,7 @@ const socket = io(),
                 console.log('Gz u connected ^-^. You are', p)
                 this.player.avatar.color = p.player.color;
                 this.room.id = p.room;
-                socket.emit('getBoard', { playerId: this.player.id, room: p.room })
+                socket.emit('getBoard', { room: p.room })
             });
 
             socket.on('boardUpd', ub => {
@@ -226,15 +306,26 @@ const socket = io(),
                 this.room.map = ub.map;
                 this.players = ub.players;
             });
-            socket.on('boom',b=>{
-                if (this.room.id!=b.room) return false;
-                console.log('cell goes boom!',b)
-                this.room.map[b.y][b.x].weaponType=null;
-                this.room.map[b.y][b.x].placedBy=null;
-                if(b.type===0){
-                    this.explode(b.x,b.y)
-                }else if(b.type===1){
-                    this.nuke(b.x,b.y)
+            socket.on('boom', b => {
+                if (this.room.id != b.room) return false;
+                console.log('cell goes boom!', b)
+                this.room.map[b.y][b.x].weaponType = null;
+                this.room.map[b.y][b.x].placedBy = null;
+                if (b.type === 0) {
+                    let deadCells=this.explode(b.x, b.y);
+                    setTimeout(()=>{
+                        socket.emit('killCells',{room:this.room.id,cells:deadCells})
+                    },1000)
+                } else if (b.type === 1) {
+                    let deadCells = this.nuke(b.x, b.y)
+                    setTimeout(()=>{
+                        socket.emit('killCells',{room:this.room.id,cells:deadCells})
+                    },1000)
+                }
+            })
+            socket.on('dead',p=>{
+                if(this.player.id==p){
+                    this.doMsg('You died!',"ono u ded bro",2000)
                 }
             })
             socket.emit('hello', this.player.id)

@@ -24,7 +24,7 @@
             <div class="game-row" v-for='(gRow,y) in room.map'>
                 <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell.type)"  v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+JSON.stringify(gCell)'>
                     <!-- <span class="player-cell" v-if='hasPlayer(x,y)'> -->
-                        <div class='stuff-cell has-text-centered'>
+                        <div class='stuff-cell has-text-centered' v-bind:class='{"boom-horiz":gCell.boomStyle==2,"boom-vert":gCell.boomStyle==1,"boom-rad-sm":gCell.boomStyle==3}'>
                             <!-- stuff for  -->
                             <!-- {{gCell}} -->
                             <i v-if='gCell.placedBy && (gCell.placedBy==player.id || gCell.weaponType<2)' v-bind:class='"is-size-3 fas fa-"+ammoCat[gCell.weaponType].icon'  ></i>
