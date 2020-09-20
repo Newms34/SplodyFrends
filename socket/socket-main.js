@@ -19,6 +19,13 @@ class Room {
     }
 }
 
+class Cell{
+    constructor(type){
+        this.type=type;
+        this.placedBy = null;
+        this.weaponType=null;
+    }
+}
 class Board {
     constructor() {
         this.height = 20;
@@ -31,13 +38,15 @@ class Board {
         */
         this.map = Array(this.height).fill(1).map(row => {
             return Array(this.width).fill(1).map(c => {
+                let type='_';
                 if (Math.random() > 0.6) {
                     //space or powerup
-                    return Math.random() > 0.9 ? '?' : '_';
+                    type = Math.random() > 0.9 ? '?' : '_';
                 } else {
                     //dirt or rock
-                    return Math.random() > 0.8 ? '*' : '#'
+                    type = Math.random() > 0.8 ? '*' : '#'
                 }
+                return new Cell(type)
             })
         })
     }
@@ -80,6 +89,7 @@ class GameCtrl {
         socket.on('hbr', function (u) {
             // heartbeat: see if user is still connected!
             const upd = Date.now()
+            // console.log('user incoming',u,self.allNames,self.allNames.find(q=>q.id==u))
             self.allNames.find(q => q.id == u).lastUpdate = upd;
             const badUsers = self.allNames.filter(u => upd - u.lastUpdate > 1000);
             badUsers.forEach(usr => self.removeUser(usr, self));
@@ -108,6 +118,9 @@ class GameCtrl {
             } else {
                 currPos[0]++;
             }
+            // console.log(map.map((r,y)=>{
+            //     return r.map((_,x)=>x+'-'+y).join('|')
+            // }))
             if (!map[currPos[1]] || !map[currPos[1]][currPos[0]]) {
                 //position doesn't exist!
                 console.log('target cell does not exist!')
@@ -118,39 +131,28 @@ class GameCtrl {
                 return false;
             } else {
                 let targCell = map[currPos[1]][currPos[0]];
-                console.log('target cell exists, is type',targCell,'Old position was ',playerObj.pos,'new is',currPos)
-                if (targCell == '*') return false;//rock, so cannot move
-                if (targCell == '#') {
+                if (targCell.type == '*') return false;//rock, so cannot move
+                if (targCell.type == '#') {
                     //dirt; break, then allow move next turn
-                    console.log('breaking dirt')
-                    map[currPos[1]][currPos[0]] = 'X';
-                    socket.emit('boardUpd', {
-                        map: map,
-                        room: room.roomId,
-                        players: room.players
-                    });
-                } else if (targCell == 'X' || targCell == '_' || targCell == '?') {
+                    map[currPos[1]][currPos[0]].type = 'X';
+                    self.updateBoard(p.player,self)
+                } else if (targCell.type == 'X' || targCell.type == '_' || targCell.type == '?') {
                     playerObj.pos.x = currPos[0];
                     playerObj.pos.y = currPos[1];
                     // console.log('okay to move! moving...',playerObj.pos,room.players)
-                    if(targCell=='X'){
+                    if (targCell.type == 'X') {
                         //broken dirt, so replace with open
-                        map[currPos[1]][currPos[0]] = Math.random()>0.9?'?':'_';
-                        targCell = map[currPos[1]][currPos[0]];
+                        targCell.type = Math.random() > 0.9 ? '?' : '_';
                     }
                     //now, handle any prize cells
-                    if(targCell=='?'){
-                        const ammoType = 1+ Math.floor(Math.random()*6);//may need to rework this to adjust frequency later!
+                    if (targCell.type == '?') {
+                        const ammoType = 1 + Math.floor(Math.random() * 6);//may need to rework this to adjust frequency later!
                         playerObj.ammo[ammoType]++;
-                        socket.emit('newAmmo',{player:p.player,ammo:ammoType})
-                        map[currPos[1]][currPos[0]] = '_';
+                        socket.emit('changeAmmo', { player: p.player, ammo: ammoType, subtract:false})
+                        targCell.type= '_';
                     }
                     //finally, send updated board
-                    socket.emit('boardUpd', {
-                        map: map,
-                        room: room.roomId,
-                        players: room.players
-                    });
+                    self.updateBoard(p.player,self)
                 }
             }
 
@@ -158,17 +160,45 @@ class GameCtrl {
 
         })
         socket.on('getBoard', ur => {
-            //get room id, send board
-            // console.log()
-            const theRoom = self.rooms.find(q => q.roomId == ur.room);
-
-            console.log('players now', self.allNames)
-            socket.emit('boardUpd', {
-                map: theRoom.board.map,
-                room: theRoom.roomId,
-                players: theRoom.players
-            });
+            self.updateBoard(ur.playerId,self);
         })
+        socket.on('attemptFire', d => {
+            console.log('user', d.player.id, 'attempted to fire ammo #', d.ammo)
+            const playerRoom = self.allNames.find(q => q.id == d.player.id).roomId,
+                room = self.rooms.find(r => r.roomId == playerRoom),//the full game room
+                playerObj = room.players.find(pl => pl.playerId == d.player.id),//our player object
+                map = room.board.map;
+            console.log('player ammo was', playerObj.ammo)
+            if (!!d.ammo && !playerObj.ammo[d.ammo]) {
+                //not regular bomb, no ammo
+                return self.io.emit('misfire', d);
+            }
+            let theCell = map[playerObj.pos.y][playerObj.pos.x];
+            if(!!d.ammo){
+                //first, decrease ammo count by 1 if not reg bomb
+                playerObj.ammo[d.ammo]--;
+            }
+            console.log('player attempted to place ammo #',d.ammo,'at',playerObj.pos)
+            theCell.weaponType=d.ammo;
+            theCell.placedBy=d.player.id;
+            // socket.emit('fired', d)
+            self.updateBoard(d.player.id,self)
+            socket.emit('changeAmmo', { player: d.player.id, ammo: d.ammo, subtract:true})
+        })
+    }
+    updateBoard(pid,self) {
+        const playerRoom = self.allNames.find(q => q.id == pid).roomId,
+            room = self.rooms.find(r => r.roomId == playerRoom),//the full game room
+            playerObj = room.players.find(pl => pl.playerId == pid);
+        self.io.emit('boardUpd', {
+            map: room.board.map,
+            room: room.roomId,
+            players: room.players,
+            hasBombs:getBombCells(map)
+        });
+    }
+    getBombCells(m){
+        return []
     }
     placePlayer(id) {
         let theRoom = this.rooms[this.rooms.length - 1];
@@ -182,10 +212,10 @@ class GameCtrl {
         theRoom.players.push(np)
         // console.log(theRoom.board.map)
         let possRooms = [];
-        //find all empty cells (no dirt, rock, or prizes)
+        //find all empty cells (no dirt, rock, prizes, or other players)
         for (let y = 0; y < 20; y++) {
             for (let x = 0; x < 20; x++) {
-                if (theRoom.board.map[y][x] && theRoom.board.map[y][x] == '_' && !theRoom.players.find(p => p.pos.x != x && p.pos.y != y)) {
+                if (theRoom.board.map[y][x] && theRoom.board.map[y][x].type == '_' && !theRoom.players.find(p => p.pos.x != x && p.pos.y != y)) {
                     possRooms.push({ x, y })
                 }
             }

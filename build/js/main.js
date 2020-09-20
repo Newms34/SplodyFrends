@@ -1,8 +1,30 @@
+class Trap {
+    constructor(player, type) {
+        this.player = player;//id of player that placed it. if == this player, trap is visible and does NOT trigger
+        this.type = type;
+    }
+    trigger(player, cell, other) {
+        if (this.type == 'fire') {
+            //fire: kill
+            player.health = 0;
+        } else if (this.type == 'ice') {
+            //ice: slide
+            cell = 'S';//S for Slippery
+        } else if (this.type == 'shock') {
+            //ice: slide
+            player.stunned = true;
+        } else if (this.type == 'mud') {
+            //ice: slide
+            other = 'mud';
+        }
+    }
+}
 const socket = io(),
     main = new Vue({
         data: {
             players: [],
             isNamed: false,
+            msgTimeout:null,
             player: {
                 id: Math.floor(Math.random() * 999999999999).toString(32),
                 avatar: {
@@ -33,7 +55,7 @@ const socket = io(),
                 icon: 'fire'
             }, {
                 name: 'Ice Trap',
-                desc: "Invisible to other players. Placed on ground. Arms after 2 seconds. When triggered, causes an explosion that slows the target's movement by 50% for 6 seconds.",
+                desc: "Invisible to other players. Placed on ground. Arms after 2 seconds. When triggered, causes an explosion that freezes the ground, making it extra slippery and preventing players from stopping on this tile.",
                 icon: 'snowflake'
             }, {
                 name: 'Shock Trap',
@@ -62,15 +84,26 @@ const socket = io(),
                 self.alert.body = body;
                 self.alert.show = true;
                 if (!!lasts && typeof lasts == "number") {
-                    setTimeout(function () {
+                    clearInterval(this.msgTimeout);
+                    this.msgTimeout = setTimeout(function () {
                         self.alert.show = false;
                     }, lasts)
                 }
+            },
+            attemptFire(amNum) {
+                socket.emit('attemptFire', {
+                    player: this.player,
+                    ammo: amNum
+                })
             },
             fire(amNum) {
                 let ammo = this.ammoCat[amNum];
                 if (!this.player.ammo[amNum]) {
                     return this.doMsg('Out of Ammo', `You have no more ${ammo.name}s!`, 2000);
+                }
+                if (amNum > 0) {
+                    //if not regular bomb;
+                    this.player.ammo[amNum]--;
                 }
                 console.log('would fire', ammo.name)
             },
@@ -97,13 +130,14 @@ const socket = io(),
                     return 'rock';
                 } else {
                     //open or prize
-                    if (symb == '_') {
-                        return 'open';
+                    if (symb == '?') {
+                        return 'prize';
                     }
-                    return 'prize';
+                    return 'open';
                 }
             },
             hasPlayer(x, y) {
+                // console.log('x',x,'y',y,'players',this.players)
                 return this.players.find(p => p.pos.x == x && p.pos.y == y);
             },
             handleKey(e) {
@@ -129,18 +163,18 @@ const socket = io(),
                     }
                     socket.emit('tryMove', {
                         player: self.player.id,
-                        dir:dir
+                        dir: dir
                     })
                 } else if ([48, 49, 50, 51, 52, 53, 54, 55, 56, 57].includes(e.which)) {
                     e.preventDefault();
                     e.stopPropagation();
-
+                    this.attemptFire(e.which-49)
                 }
             }
         },
-        computed:{
-            mapDisp:function(){
-                return this.room.map.map(q=>q.join(''));
+        computed: {
+            mapDisp: function () {
+                return this.room.map.map(q => q.join(''));
             }
         },
         created() {
@@ -148,12 +182,18 @@ const socket = io(),
                 this.updatePlayers(p);
             });
             socket.on('attack', p => {
+                //incoming attack
                 this.receiveAttack(p);
             });
-            socket.on('newAmmo', p => {
+            socket.on('misfire', p => {
+                if (p.player.id != this.player.id) return false;
+                console.log('attempted',null)
+                return this.doMsg('Out of Ammo', `You have no more ${this.ammoCat[p.ammo].name}s!`, 2000);
+            });
+            socket.on('changeAmmo', p => {
                 if (p.player != this.player.id) return false;
-                this.player.ammo[p.ammo]++;
-                console.log(`Got new ${this.ammoCat[p.ammo].name}! Player now`,this.player)
+                this.player.ammo[p.ammo]+=p.subtract?-1:1;
+                // console.log(`Got new ${this.ammoCat[p.ammo].name}! Player now`, this.player)
             });
             socket.on('disconnect', d => {
                 if (!!this.askingReload) return false;
@@ -179,7 +219,9 @@ const socket = io(),
 
             socket.on('boardUpd', ub => {
                 if (this.room.id !== ub.room) return false;
-                console.log('BOARD NOW', ub)
+                // console.log('BOARD NOW', ub);
+                //need to run timers on all bomb cells 
+                
                 this.room.map = ub.map;
                 this.players = ub.players;
             });

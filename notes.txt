@@ -30,4 +30,9 @@ THOUGHTS:
 how do we get thru dirt? 
  - some sort of 'dig' functionality
  - two moves to move to dirt cell. First move "breaks" dirt, then cell becomes open at next turn
-maybe remove all icons except Astronaut, since we have max of 5 per map
+
+bombs: megabomb (sacrifice) will "destroy" (i.e., convert to _ open) all cells surrounding, regardless of type
+    regular bomb should destroy UP to 10 cells vert and horiz from position, but each dirt or rock counts as 2
+    Trap constructor?
+
+may be difficult to implement "slow" feature, so perhaps go the opposite? ice trap = slides

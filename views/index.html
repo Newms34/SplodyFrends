@@ -10,7 +10,7 @@
     <meta name="msapplication-TileImage" content="/img/icons/ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
     <script src="https://kit.fontawesome.com/2094f8a559.js" crossorigin="anonymous"></script>
-    <link rel="stylesheet" type="text/css" href="/css/styles.fdaabb3b.css">
+    <link rel="stylesheet" type="text/css" href="/css/styles.63fcec3d.css">
 </head>
 
 <body class='has-text-white'>
@@ -22,12 +22,15 @@
         
         <div class="game-board">
             <div class="game-row" v-for='(gRow,y) in room.map'>
-                <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell)"  v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+gCell'>
+                <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell.type)"  v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+JSON.stringify(gCell)'>
                     <!-- <span class="player-cell" v-if='hasPlayer(x,y)'> -->
                         <div class='stuff-cell has-text-centered'>
                             <!-- stuff for  -->
-                            <i v-if='hasPlayer(x,y)'  class="is-size-3 fas fa-user-astronaut" v-bind:style="{color:hasPlayer(x,y).color}"></i>
-                            <i v-if='!hasPlayer(x,y)'>&nbsp;</i>
+                            <!-- {{gCell}} -->
+                            <i v-if='gCell.placedBy && (gCell.placedBy==player.id || gCell.weaponType<2)' v-bind:class='"is-size-3 fas fa-"+ammoCat[gCell.weaponType].icon'  ></i>
+                            <i v-if='hasPlayer(x,y)' class="is-size-3 fas fa-user-astronaut" v-bind:style="{color:hasPlayer(x,y).color}"></i>
+                            
+                            <!-- <i v-if='!hasPlayer(x,y)'>&nbsp;</i> -->
                         </div>
 
                     <!-- </span>
@@ -55,7 +58,7 @@
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/bulmabox@7.0.10/bulmabox.min.js"></script>
-    <script src="/js/all.min.e54b0ea5.js"></script>
+    <script src="/js/all.min.cef76583.js"></script>
 </body>
 
 </html>

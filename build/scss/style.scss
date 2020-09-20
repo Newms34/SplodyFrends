@@ -55,7 +55,12 @@ body {
     width:50px;
     overflow:hidden;
     font-size:20pt;
+    position:relative;
     text-shadow: 2px 2px 4px #000;
+    & i{
+        position: absolute;
+        left:15px;
+    }
 }
 .user-panel{
     position:fixed;
