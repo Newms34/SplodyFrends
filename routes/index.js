@@ -1,11 +1,9 @@
 const express = require('express');
-const router = express.Router(),
-    mongoose = require('mongoose'),
-    models = require('../models/');
+const router = express.Router();
 
 module.exports = function (io) {
     //io here is socketio. I'm including it just in case we might need to add, for example, a "your athlete just got updated!" notice
-    router.use('/athletes', require('./subroutes/athlete')(io));
+    router.use('/main', require('./subroutes/main')(io));
 
     router.get('/alive', function (req, res, next) {
         //hb for making sure we're still alive

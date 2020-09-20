@@ -10,16 +10,16 @@ const express = require('express'),
     bodyParser = require('body-parser'),
     fs = require('fs'),
     session = require('express-session'),
-    mangoStore = require('connect-mongodb-session')(session),
-    compression = require('compression'),
-    store = new mangoStore({
-        uri: process.env.NODE_ENV && process.env.NODE_ENV == 'production' ? process.env.MONGODB_URI : 'mongodb://localhost:27017/splody',
-        collection: 'cmmSeshes'
-    });
+    // mangoStore = require('connect-mongodb-session')(session),
+    compression = require('compression');
+    // store = new mangoStore({
+    //     uri: process.env.NODE_ENV && process.env.NODE_ENV == 'production' ? process.env.MONGODB_URI : 'mongodb://localhost:27017/splody',
+    //     collection: 'cmmSeshes'
+    // });
 app.use(compression());
-store.on('error', function (error) {
-    console.log(error);
-});
+// store.on('error', function (error) {
+//     console.log(error);
+// });
 const sesh = session({
     secret: 'super secret that id normally replace in production'
 });
