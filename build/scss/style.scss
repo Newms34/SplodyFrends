@@ -11,6 +11,8 @@ body {
 #main {
     padding: 5px;
     min-height: 90vh;
+    top:65px;
+    position: absolute;
 }
 .is-danger-transp{
     background:hsla(0,100%,60%,0.7);
@@ -34,6 +36,9 @@ body {
         &.dirt{
             background:url('../img/dirt.jpg');
         }
+        &.dirt-cracked{
+            background:url('../img/dirtCracked.jpg');
+        }
         &.rock{
             background:url('../img/rock.jpg');
         }
@@ -45,10 +50,29 @@ body {
         }
     }
 }
-.player-cell{
-    // height:100%;
-    // width:100%;
-    // lin
+.stuff-cell{
+    height:50px;
+    width:50px;
+    overflow:hidden;
     font-size:20pt;
     text-shadow: 2px 2px 4px #000;
+}
+.user-panel{
+    position:fixed;
+    top:0;
+    left:0;
+    // height:60px;
+    padding:5px;
+    // min-width:80vw;
+    .shadow-user{
+        text-shadow: 2px 2px 4px #000;
+    }
+    .ammo-btn{
+        margin-right:5px;
+        .ammo-count{
+            position: absolute;;
+            right:0;
+            top:0;
+        }
+    }
 }

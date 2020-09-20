@@ -26,8 +26,8 @@ All traps trigger on being walked on. do not trigger if "placer" walks on them. 
 POWERUPS:
 ... give one of the upgrades above?
 
-NOTE: may need to rethink order of adding new player. must be:
-1. create new player class instance
-2. find/create open map
-3. add player to map's list of players
-4. place player on map (i.e., give pos)
+THOUGHTS:
+how do we get thru dirt? 
+ - some sort of 'dig' functionality
+ - two moves to move to dirt cell. First move "breaks" dirt, then cell becomes open at next turn
+maybe remove all icons except Astronaut, since we have max of 5 per map

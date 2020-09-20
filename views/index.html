@@ -10,28 +10,23 @@
     <meta name="msapplication-TileImage" content="/img/icons/ms-icon-144x144.png">
     <meta name="theme-color" content="#ffffff">
     <script src="https://kit.fontawesome.com/2094f8a559.js" crossorigin="anonymous"></script>
-    <link rel="stylesheet" type="text/css" href="/css/styles.fa6a472c.css">
+    <link rel="stylesheet" type="text/css" href="/css/styles.fdaabb3b.css">
 </head>
 
-<body>
+<body class='has-text-white'>
     <div id="main">
-        <i v-bind:class="'is-size-3 fas fa-'+player.avatar.icon" v-bind:style="{color:player.avatar.color}"></i>
-        <!-- <div class="message">
-            <div class="message-body">
-                <div v-for='(a,i) in ammoCat'>
-                    <div class="has-text-weight-bold"><i v-bind:class="'fas fa-'+a.icon"></i>&nbsp;{{a.name}}</div>
-                    <div><button class="button is-link is-small" v-on:click='fire(i)'><i class="fas fa-check"></i></button>{{a.desc}}</div>
-                    <hr>
-                </div>
-            </div>
-        </div> -->
+        <div class="message has-text-grey-darker user-panel">
+            <span class="has-text-weight-bold">You: </span><i class="is-size-3 fas fa-user-astronaut shadow-user" v-bind:style="{color:player.avatar.color}"></i>
+            &nbsp;<div v-for='(ammo,i) in ammoCat' class='button is-info ammo-btn' v-bind:title='ammo.name+": "+ammo.desc'><i v-bind:class="'fas fa-'+ammo.icon"></i><div class="ammo-count">{{player.ammo[i]>-1?player.ammo[i]:'∞'}}</div></div>
+        </div>
+        
         <div class="game-board">
             <div class="game-row" v-for='(gRow,y) in room.map'>
-                <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell)">
+                <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell)"  v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+gCell'>
                     <!-- <span class="player-cell" v-if='hasPlayer(x,y)'> -->
-                        <div class='player-cell has-text-centered'>
-
-                            <i v-if='hasPlayer(x,y)' v-bind:class="' fas fa-'+hasPlayer(x,y).icon" v-bind:style="{color:hasPlayer(x,y).color}"></i>
+                        <div class='stuff-cell has-text-centered'>
+                            <!-- stuff for  -->
+                            <i v-if='hasPlayer(x,y)'  class="is-size-3 fas fa-user-astronaut" v-bind:style="{color:hasPlayer(x,y).color}"></i>
                             <i v-if='!hasPlayer(x,y)'>&nbsp;</i>
                         </div>
 
@@ -46,11 +41,21 @@
             </div>
             <div>{{alert.body}}</div>
         </div>
+        <hr>
+        <div class="message">
+            <div class="message-body">
+                <div v-for='(a,i) in ammoCat'>
+                    <div class="has-text-weight-bold"><i v-bind:class="'fas fa-'+a.icon"></i>&nbsp;{{a.name}}</div>
+                    <div><button class="button is-link is-small" v-on:click='fire(i)'><i class="fas fa-check"></i></button>{{a.desc}}</div>
+                    <hr>
+                </div>
+            </div>
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/bulmabox@7.0.10/bulmabox.min.js"></script>
-    <script src="/js/all.min.a8a3529e.js"></script>
+    <script src="/js/all.min.e54b0ea5.js"></script>
 </body>
 
 </html>

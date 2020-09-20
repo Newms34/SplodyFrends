@@ -5,9 +5,8 @@ const socket = io(),
             isNamed: false,
             player: {
                 id: Math.floor(Math.random() * 999999999999).toString(32),
-                avatar:{
-                    icon:null,
-                    color:null
+                avatar: {
+                    color: null
                 },
                 pos: {
                     x: 0,
@@ -50,11 +49,11 @@ const socket = io(),
                 body: null,
                 show: false,
             },
-            room:{
-                id:null,
-                map:Array(20).fill(1).map(rw=>Array(20).fill('_'))
+            room: {
+                id: null,
+                map: Array(20).fill(1).map(rw => Array(20).fill('_'))
             },
-            askingReload:false,
+            askingReload: false,
         },
         methods: {
             doMsg(title, body, lasts) {
@@ -89,20 +88,59 @@ const socket = io(),
                     }
                 })
             },
-            cellBg(symb){
-                if(symb=='#'){
+            cellBg(symb) {
+                if (symb == '#') {
                     return 'dirt';
-                }else if(symb=='*'){
+                } else if (symb == 'X') {
+                    return 'dirt-cracked';
+                } else if (symb == '*') {
                     return 'rock';
-                }else{
-                    if(symb=='_'){
+                } else {
+                    //open or prize
+                    if (symb == '_') {
                         return 'open';
                     }
                     return 'prize';
                 }
             },
-            hasPlayer(x,y){
-                return this.players.find(p=>p.pos.x==x && p.pos.y==y);
+            hasPlayer(x, y) {
+                return this.players.find(p => p.pos.x == x && p.pos.y == y);
+            },
+            handleKey(e) {
+                /* 
+                    87:up,83:down, 65:left,68:right
+                    49-57: 1-9, 48:0
+                    */
+                const self = this;
+                console.log('user pressed and released', e.which)
+                if ([65, 68, 83, 87].includes(e.which)) {
+                    //movement
+                    e.preventDefault();
+                    e.stopPropagation();
+                    let dir = null;
+                    if (e.which == 87) {
+                        dir = 'up';
+                    } else if (e.which == 83) {
+                        dir = 'down';
+                    } else if (e.which == 65) {
+                        dir = 'left';
+                    } else {
+                        dir = 'right';
+                    }
+                    socket.emit('tryMove', {
+                        player: self.player.id,
+                        dir:dir
+                    })
+                } else if ([48, 49, 50, 51, 52, 53, 54, 55, 56, 57].includes(e.which)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                }
+            }
+        },
+        computed:{
+            mapDisp:function(){
+                return this.room.map.map(q=>q.join(''));
             }
         },
         created() {
@@ -112,35 +150,40 @@ const socket = io(),
             socket.on('attack', p => {
                 this.receiveAttack(p);
             });
+            socket.on('newAmmo', p => {
+                if (p.player != this.player.id) return false;
+                this.player.ammo[p.ammo]++;
+                console.log(`Got new ${this.ammoCat[p.ammo].name}! Player now`,this.player)
+            });
             socket.on('disconnect', d => {
-                if(!!this.askingReload) return false;
-               this.askReload();
+                if (!!this.askingReload) return false;
+                this.askReload();
             });
             socket.on('connect_failed', d => {
-                if(!!this.askingReload) return false;
-               this.askReload();
+                if (!!this.askingReload) return false;
+                this.askReload();
             });
             socket.on('hb', u => {
-               if(this.player.id===u){
-                   socket.emit('hbr',u)
-               }
+                if (this.player.id === u) {
+                    socket.emit('hbr', u)
+                }
             });
             socket.on('greetz', p => {
-                // console.log('placing icon and color for',p.player, 'this player',this.player.id,'same?',p.player.playerId ==this.player.id)
-                if(p.player.playerId != this.player.id) return false;
+                // console.log('placing color for',p.player, 'this player',this.player.id,'same?',p.player.playerId ==this.player.id)
+                if (p.player.playerId != this.player.id) return false;
                 console.log('Gz u connected ^-^. You are', p)
-                this.player.avatar.icon = p.player.icon;
                 this.player.avatar.color = p.player.color;
-                this.room.id=p.room;
-                socket.emit('getBoard',{playerId:this.player.id,room:p.room})
+                this.room.id = p.room;
+                socket.emit('getBoard', { playerId: this.player.id, room: p.room })
             });
 
             socket.on('boardUpd', ub => {
-                if(this.room.id !== ub.room) return false;
-                console.log('BOARD NOW',ub)
+                if (this.room.id !== ub.room) return false;
+                console.log('BOARD NOW', ub)
                 this.room.map = ub.map;
                 this.players = ub.players;
-             });
+            });
             socket.emit('hello', this.player.id)
+            window.addEventListener('keyup', this.handleKey)
         }
     }).$mount('#main')
