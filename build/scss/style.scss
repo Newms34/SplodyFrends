@@ -1,0 +1,54 @@
+@import "./components/bulma";
+html,
+body {
+    width: 100%;
+    margin: 0;
+    height: 100%; // padding-top: 40px;
+    // background: #000;
+    background:#000;
+}
+
+#main {
+    padding: 5px;
+    min-height: 90vh;
+}
+.is-danger-transp{
+    background:hsla(0,100%,60%,0.7);
+    color:#fff;
+    &.alert-box{
+        position:fixed;
+        right:10px;
+        top:10px;
+    }
+}
+
+.game-row{
+    // display:flex;
+    margin-bottom:-6px;
+    & .game-cell{
+        display:inline-block;
+        width:50px;
+        height:50px;
+        // border:1px solid #000;
+        background-size:contain !important;
+        &.dirt{
+            background:url('../img/dirt.jpg');
+        }
+        &.rock{
+            background:url('../img/rock.jpg');
+        }
+        &.open{
+            background:url('../img/open.jpg');
+        }
+        &.prize{
+            background:url('../img/prize.jpg');
+        }
+    }
+}
+.player-cell{
+    // height:100%;
+    // width:100%;
+    // lin
+    font-size:20pt;
+    text-shadow: 2px 2px 4px #000;
+}

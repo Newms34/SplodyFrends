@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base href="/">
+    <title>SplodyFrends</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- <link rel="manifest" href="/img/icons/manifest.json"> -->
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/img/icons/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <script src="https://kit.fontawesome.com/2094f8a559.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" type="text/css" href="/css/styles.css">
+</head>
+
+<body>
+    <div id="main">
+        <i v-bind:class="'is-size-3 fas fa-'+player.avatar.icon" v-bind:style="{color:player.avatar.color}"></i>
+        <!-- <div class="message">
+            <div class="message-body">
+                <div v-for='(a,i) in ammoCat'>
+                    <div class="has-text-weight-bold"><i v-bind:class="'fas fa-'+a.icon"></i>&nbsp;{{a.name}}</div>
+                    <div><button class="button is-link is-small" v-on:click='fire(i)'><i class="fas fa-check"></i></button>{{a.desc}}</div>
+                    <hr>
+                </div>
+            </div>
+        </div> -->
+        <div class="game-board">
+            <div class="game-row" v-for='(gRow,y) in room.map'>
+                <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell)">
+                    <!-- <span class="player-cell" v-if='hasPlayer(x,y)'> -->
+                        <div class='player-cell has-text-centered'>
+
+                            <i v-if='hasPlayer(x,y)' v-bind:class="' fas fa-'+hasPlayer(x,y).icon" v-bind:style="{color:hasPlayer(x,y).color}"></i>
+                            <i v-if='!hasPlayer(x,y)'>&nbsp;</i>
+                        </div>
+
+                    <!-- </span>
+                    <span v-if='!hasPlayer(x,y)'></span> -->
+                </div>
+            </div>
+        </div>
+        <div class="notification is-danger-transp alert-box" v-if='alert.show'>
+            <div class="has-text-weight-bold">
+                <i class="fas fa-exclamation-triangle"></i>&nbsp;{{alert.title}}
+            </div>
+            <div>{{alert.body}}</div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/bulmabox@7.0.10/bulmabox.min.js"></script>
+    <script src="/js/all.min.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,33 @@
+splodyfrends ideas:
+
+DAMAGE:
+1 damage == death IF NOT otherwise protected
+
+
+WEAPONS/SKILLS
+'default' bomb: destroys row & column, deals 1 dmg 
+
+'sacrifice' bomb: destroys all dirt in range (?), deals 1 dmg, kills user. Basically used if you're A) surrounded or B) enemies are hiding
+
+'shield': only available via powerups (see below)/kill #/something else? negates 1 bomb attack (i.e., 1 dmg). 
+    - Disappears after 1 attack. Timed? (i.e., if you dont get hit in X seconds, disappears)
+
+
+TRAPS:
+All traps trigger on being walked on. do not trigger if "placer" walks on them. Obtained via powerups
+
+'Damage': deals 1 dmg, unblockable
+
+'Ice': deals no dmg, slows target to 0.5 speed, lasts MEDIUM-SHORT time
+
+'Stun': deals no dmg, lasts SHORT time, enemy cannot move/attack
+
+
+POWERUPS:
+... give one of the upgrades above?
+
+NOTE: may need to rethink order of adding new player. must be:
+1. create new player class instance
+2. find/create open map
+3. add player to map's list of players
+4. place player on map (i.e., give pos)
