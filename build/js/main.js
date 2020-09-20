@@ -146,7 +146,6 @@ const socket = io(),
                     49-57: 1-9, 48:0
                     */
                 const self = this;
-                console.log('user pressed and released', e.which)
                 if ([65, 68, 83, 87].includes(e.which)) {
                     //movement
                     e.preventDefault();
@@ -170,6 +169,10 @@ const socket = io(),
                     e.stopPropagation();
                     this.attemptFire(e.which-49)
                 }
+            },
+            explode(x,y){
+                // console.log('explosion happens')
+                let startPos = [x,y];
             }
         },
         computed: {
@@ -220,11 +223,20 @@ const socket = io(),
             socket.on('boardUpd', ub => {
                 if (this.room.id !== ub.room) return false;
                 // console.log('BOARD NOW', ub);
-                //need to run timers on all bomb cells 
-                
                 this.room.map = ub.map;
                 this.players = ub.players;
             });
+            socket.on('boom',b=>{
+                if (this.room.id!=b.room) return false;
+                console.log('cell goes boom!',b)
+                this.room.map[b.y][b.x].weaponType=null;
+                this.room.map[b.y][b.x].placedBy=null;
+                if(b.type===0){
+                    this.explode(b.x,b.y)
+                }else if(b.type===1){
+                    this.nuke(b.x,b.y)
+                }
+            })
             socket.emit('hello', this.player.id)
             window.addEventListener('keyup', this.handleKey)
         }

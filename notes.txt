@@ -36,3 +36,11 @@ bombs: megabomb (sacrifice) will "destroy" (i.e., convert to _ open) all cells s
     Trap constructor?
 
 may be difficult to implement "slow" feature, so perhaps go the opposite? ice trap = slides
+
+BOMB:
+ 1. user sets bomb down on tile via 
+  - this updates board, player ammo count, places icon 
+ 2. back end mega-timer counter (per game) counts down N seconds (0 for sac, 3(?) for reg bomb)
+ 3. emit "boom" socket, with map id, position, type
+ 4. visual change on front
+ 5. on back, change appropriate cells, kill players in range
