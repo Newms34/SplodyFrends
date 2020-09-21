@@ -6,16 +6,13 @@
     <title>SplodyFrends</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- <link rel="manifest" href="/img/icons/manifest.json"> -->
-    <meta name="msapplication-TileColor" content="#ffffff">
-    <meta name="msapplication-TileImage" content="/img/icons/ms-icon-144x144.png">
-    <meta name="theme-color" content="#ffffff">
     <script src="https://kit.fontawesome.com/2094f8a559.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" type="text/css" href="/css/styles.css">
 </head>
 
-<body class='has-text-white'>
+<body>
     <div id="main">
-        <div class="message has-text-grey-darker user-panel">
+        <div class="message user-panel">
             <span class="has-text-weight-bold">You: </span><i class="is-size-3 fas fa-user-astronaut shadow-user" v-bind:style="{color:player.avatar.color}"></i>
             &nbsp;<div v-for='(ammo,i) in ammoCat' class='button is-info ammo-btn' v-bind:title='ammo.name+": "+ammo.desc'><i v-bind:class="'fas fa-'+ammo.icon"></i><div class="ammo-count">{{player.ammo[i]>-1?player.ammo[i]:'∞'}}</div></div>
         </div>
@@ -24,12 +21,14 @@
             <div class="game-row" v-for='(gRow,y) in room.map'>
                 <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell.type)"  v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+JSON.stringify(gCell)'>
                     <!-- <span class="player-cell" v-if='hasPlayer(x,y)'> -->
-                        <div class='stuff-cell has-text-centered' v-bind:class='{"boom-horiz":gCell.boomStyle==2,"boom-vert":gCell.boomStyle==1,"boom-rad-sm":gCell.boomStyle==3}'>
-                            <!-- stuff for  -->
-                            <!-- {{gCell}} -->
-                            <i v-if='gCell.placedBy && (gCell.placedBy==player.id || gCell.weaponType<2)' v-bind:class='"is-size-3 fas fa-"+ammoCat[gCell.weaponType].icon'  ></i>
-                            <i v-if='hasPlayer(x,y)' class="is-size-3 fas fa-user-astronaut" v-bind:style="{color:hasPlayer(x,y).color}"></i>
+                        <div class='stuff-cell has-text-centered' v-on:click='showContents(gCell,player)' v-bind:class='{"frozen":gCell.slippery,"boom-horiz":gCell.boomStyle==2,"boom-vert":gCell.boomStyle==1,"boom-rad-sm":gCell.boomStyle==3}'>
+                            <!-- stuff for cell -->
+                            <!-- any weapons -->
+                            <i v-if='gCell.placedBy && (gCell.placedBy==player.playerId || gCell.weaponType<2) && gCell.weaponType!==null' v-bind:class='"has-text-white is-size-3 fas fa-"+ammoCat[gCell.weaponType].icon'  ></i>
                             
+                            <!-- players -->
+                            <i v-if='hasPlayer(x,y)' class="is-size-3 fas" v-bind:class="{'stunned':player.stunnedCounter>0,'fa-user-astronaut':player.hp,'fa-skull':!player.hp}" v-bind:style="{color:hasPlayer(x,y).color}"></i>
+                            <span v-if='player.stunnedCounter'></span>
                             <!-- <i v-if='!hasPlayer(x,y)'>&nbsp;</i> -->
                         </div>
 
@@ -54,6 +53,7 @@
                 </div>
             </div>
         </div>
+        {{player}}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12"></script> -->

@@ -2,7 +2,7 @@
 const randoId = () => Math.floor(Math.random() * 9999999999).toString(32),
     getRand = a => a[Math.floor(Math.random() * a.length)],
     colors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'purple', 'white'],
-    fs = require('fs');
+    devMode = true;
 
 
 class Room {
@@ -60,7 +60,7 @@ class Player {
     constructor(id, color) {
         this.playerId = id;
         this.color = color;
-        this.stunned = false;
+        this.stunnedCounter = 0;
         this.shielded = false;
         this.pos = { x: 0, y: 0 };
         this.ammo = [-1, 0, 0, 0, 0, 0, 0];//this "version" of the ammo count is the "real" one; the one on the front end is just for convenience!
@@ -71,140 +71,187 @@ class GameCtrl {
         this.io = io;
         this.rooms = [];
         this.allNames = [];//list of all 'names' (ids) for reference
-        this.rooms.push(new Room(randoId()))
-        const self = this;
-        this.io.on('connection', function (socket) {
-            self.handleConnect(socket, self);
+        this.rooms.push(new Room(randoId()));
+        this.io.on('connection', socket => {
+            this.handleConnect(socket);
         })
-        setInterval(function () {
-            self.heartbeat();
-            self.checkRooms();
+        setInterval(() => {
+            this.heartbeat();
+            this.checkRooms();
+            // this.checkStatuses()
         }, 100);
     }
     checkRooms() {
         for (let room of this.rooms) {
             // console.log(room.roomId)
-            this.getBombCells(room.board.map,room.roomId)
+            this.getBombCells(room.board.map, room.roomId)
+            room.players.forEach(p => {
+                if (p.stunnedCounter > 0) {
+                    p.stunnedCounter -= 100;
+                    if (p.stunnedCounter <= 100) {
+                        this.updateBoard(room.roomId);
+                    }
+                } else {
+                    p.stunnedCounter = 0;
+                }
+            })
         }
     }
-    handleConnect(socket, self) {
-        socket.on('hello', function (n) {
+    dist(a, b) {
+        return Math.hypot(Math.abs(b.y - a.y), Math.abs(b.x - a.x))
+    }
+    movePlayer(p,socket,slipperyMove) {
+        const room = this.rooms.find(r => r.roomId == p.room),//the full game room
+            playerObj = room.players.find(pl => pl.playerId == p.player),//our player object
+            map = room.board.map,
+            otherPlayers = room.players.filter(pl => pl.playerId != p.player).map(p => [p.pos.x, p.pos.y]),//cannot move onto other players!
+            currPos = [playerObj.pos.x, playerObj.pos.y];
+        if (playerObj.stunnedCounter > 0) {
+            //cannot move if stunnedCounter!
+            console.log('stunned!');
+            return false;
+        }
+        if (p.dir == 'up') {
+            currPos[1]--;
+        } else if (p.dir == 'down') {
+            currPos[1]++;
+        } else if (p.dir == 'left') {
+            currPos[0]--;
+        } else {
+            currPos[0]++;
+        }
+        if (!map[currPos[1]] || !map[currPos[1]][currPos[0]]) {
+            //position doesn't exist!
+            console.log('target cell does not exist!')
+            return false;
+        } else if (otherPlayers.some(opos => opos[0] == currPos[0] && opos[1] == currPos[1])) {
+            //would move onto other player
+            console.log('overlapping players!')
+            return false;
+        } else {
+            //can move!
+            let targCell = map[currPos[1]][currPos[0]];
+            if (targCell.type == '*') return false;//rock, so cannot move
+            if (targCell.type == '#') {
+                //dirt; break, then allow move next turn
+                map[currPos[1]][currPos[0]].type = 'X';
+                this.updateBoard(room.roomId)
+            } else if (targCell.type == 'X' || targCell.type == '_' || targCell.type == '?') {
+                playerObj.pos.x = currPos[0];
+                playerObj.pos.y = currPos[1];
+                // console.log('okay to move! moving...',playerObj.pos,room.players)
+                if (targCell.type == 'X') {
+                    //broken dirt, so replace with open
+                    targCell.type = Math.random() > 0.9 ? '?' : '_';
+                }
+                //now, handle any prize cells
+                if (targCell.type == '?') {
+                    const ammoType = 1 + Math.floor(Math.random() * 6);//may need to rework this to adjust frequency later!
+                    playerObj.ammo[ammoType]++;
+                    socket.emit('changeAmmo', { player: p.player, ammo: ammoType, subtract: false })
+                    targCell.type = '_';
+                }
+                //handle any traps
+                if (targCell.weaponType > 2 && targCell.weaponType < 7 && (p.player != targCell.placedBy || devMode)) {
+                    //trap!
+                    let trapType = targCell.weaponType - 2;
+                    console.log('user', p, 'triggered a trap!', targCell, trapType)
+                    if (trapType == 1) {
+                        socket.emit('dead', { player: p.player, reason: 'fire trap' });
+                    } else if (trapType == 2) {
+                        console.log('ice!')
+                        targCell.slippery = true;
+                    } else if (trapType == 3) {
+                        console.log('shock!')
+                        playerObj.stunnedCounter = 3000;
+                        socket.emit('shock', { player: p.player, amt: 3000 });
+                    } else if (trapType == 4) {
+                        // const dirtyCells = [];
+                        for (let y = 0; y < map.length; y++) {
+                            for (let x = 0; x < map[0].length; x++) {
+                                if (this.dist({ x: x, y: y }, { x: currPos[0], y: currPos[1] }) <= 5 && (currPos[0] != x || currPos[1] != y)) {
+                                    let dirtyCell = map[y][x];
+                                    if (dirtyCell.type != '#' && dirtyCell.type != '*') {
+                                        dirtyCell.type = '#';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    //remove trap, since it's been triggered
+                    targCell.weaponType = null;
+                    // targCell.slippery = false;
+                    targCell.placedBy = null;
+                }
+                if(targCell.slippery){
+                    console.log('slippery! player sliding in direction',p.dir)
+                    targCell.slippery=false;
+                    this.movePlayer(p,socket,true);
+                }
+                //finally, send updated board
+                this.updateBoard(room.roomId)
+            }
+        }
+    }
+    handleConnect(socket) {
+        socket.on('hello', n => {
             //'hello' is a new player connecting
             // console.log('user', n, 'connected!', self)
-            if (!self.allNames.includes(n)) {
+            if (!this.allNames.includes(n)) {
                 //player NOT yet placed (should always trigger!)
-                const playerRoom = self.placePlayer(n);
+                const playerRoom = this.placePlayer(n);
                 socket.emit('greetz', playerRoom)
             }
         });
-        socket.on('hbr', function (u) {
+        socket.on('hbr', u => {
             // heartbeat: see if user is still connected!
             const upd = Date.now()
-            // console.log('user incoming',u,self.allNames,self.allNames.find(q=>q.id==u))
-            self.allNames.find(q => q.id == u).lastUpdate = upd;
-            const badUsers = self.allNames.filter(u => upd - u.lastUpdate > 1000);
-            badUsers.forEach(usr => self.removeUser(usr, self));
+            this.allNames.find(q => q.id == u).lastUpdate = upd;
+            const badUsers = this.allNames.filter(u => upd - u.lastUpdate > 1000);
+            badUsers.forEach(usr => this.removeUser(usr));
         });
         socket.on('tryMove', p => {
             /* 
-                1. find out if player is stunned
+                1. find out if player is stunnedCounter
                 2. find out if player can re: blocking (i.e., room Array for them does not have obstruction in that direction)
             */
-            const playerRoom = self.allNames.find(q => q.id == p.player).roomId,
-                room = self.rooms.find(r => r.roomId == playerRoom),//the full game room
-                playerObj = room.players.find(pl => pl.playerId == p.player),//our player object
-                map = room.board.map,
-                otherPlayers = room.players.filter(pl => pl.playerId != p.player).map(p => [p.pos.x, p.pos.y]),//cannot move onto other players!
-                currPos = [playerObj.pos.x, playerObj.pos.y];
-            if (playerObj.stunned) {
-                //cannot move if stunned!
-                return false;
-            }
-            if (p.dir == 'up') {
-                currPos[1]--;
-            } else if (p.dir == 'down') {
-                currPos[1]++;
-            } else if (p.dir == 'left') {
-                currPos[0]--;
-            } else {
-                currPos[0]++;
-            }
-            // console.log(map.map((r,y)=>{
-            //     return r.map((_,x)=>x+'-'+y).join('|')
-            // }))
-            if (!map[currPos[1]] || !map[currPos[1]][currPos[0]]) {
-                //position doesn't exist!
-                console.log('target cell does not exist!')
-                return false;
-            } else if (otherPlayers.some(opos => opos[0] == currPos[0] && opos[1] == currPos[1])) {
-                //would move onto other player
-                console.log('overlapping players!')
-                return false;
-            } else {
-                let targCell = map[currPos[1]][currPos[0]];
-                if (targCell.type == '*') return false;//rock, so cannot move
-                if (targCell.type == '#') {
-                    //dirt; break, then allow move next turn
-                    map[currPos[1]][currPos[0]].type = 'X';
-                    self.updateBoard(room.roomId, self)
-                } else if (targCell.type == 'X' || targCell.type == '_' || targCell.type == '?') {
-                    playerObj.pos.x = currPos[0];
-                    playerObj.pos.y = currPos[1];
-                    // console.log('okay to move! moving...',playerObj.pos,room.players)
-                    if (targCell.type == 'X') {
-                        //broken dirt, so replace with open
-                        targCell.type = Math.random() > 0.9 ? '?' : '_';
-                    }
-                    //now, handle any prize cells
-                    if (targCell.type == '?') {
-                        const ammoType = 1 + Math.floor(Math.random() * 6);//may need to rework this to adjust frequency later!
-                        playerObj.ammo[ammoType]++;
-                        socket.emit('changeAmmo', { player: p.player, ammo: ammoType, subtract: false })
-                        targCell.type = '_';
-                    }
-                    //finally, send updated board
-                    self.updateBoard(room.roomId, self)
-                }
-            }
 
+            this.movePlayer(p,socket);
             // console.log('TRIED to move! room was', room, 'DIR WAS', p.dir, 'PLAYER WAS', playerObj);
 
         })
         socket.on('getBoard', ur => {
-            self.updateBoard(ur.room, self);
+            this.updateBoard(ur.room);
         })
-        socket.on('killCells',k=>{
-            console.log('killing cells',k)
-            let room= this.rooms.find(q=>q.roomId ==k.room);
+        socket.on('killCells', k => {
+            let room = this.rooms.find(q => q.roomId == k.room);
             console.log(k.cells.length);
-            k.cells.forEach(p=>{
+            k.cells.forEach(p => {
                 // console.log('trying to find cell',p)
                 let c = room.board.map[p[0]] && room.board.map[p[0]][p[1]]
-                if(!c) return false;
-                c.type='_';
+                if (!c) return false;
+                c.type = '_';
                 //remove ice, destroy bombs if present
-                c.slippery=false;
-                if(c.weaponType===0 || c.weaponType===1){
-                    c.weaponType=null;
+                c.slippery = false;
+                if (c.weaponType === 0 || c.weaponType === 1) {
+                    c.weaponType = null;
                 }
-                room.players.forEach(pl=>{
-                    if(pl.pos.x == p[1] && pl.pos.y==p[0]){
-                        socket.emit('dead',pl.playerId);
+                room.players.forEach(pl => {
+                    if (pl.pos.x == p[1] && pl.pos.y == p[0]) {
+                        socket.emit('dead', { player: pl.playerId, reason: 'bomb' });
                     }
                 })
             })
-            self.updateBoard(k.room,self);
+            this.updateBoard(k.room);
         })
         socket.on('attemptFire', d => {
-            console.log('user', d.player.id, 'attempted to fire ammo #', d.ammo)
-            const playerRoom = self.allNames.find(q => q.id == d.player.id).roomId,
-                room = self.rooms.find(r => r.roomId == playerRoom),//the full game room
-                playerObj = room.players.find(pl => pl.playerId == d.player.id),//our player object
+            const playerRoom = this.allNames.find(q => q.id == d.player.playerId).roomId,
+                room = this.rooms.find(r => r.roomId == playerRoom),//the full game room
+                playerObj = room.players.find(pl => pl.playerId == d.player.playerId),//our player object
                 map = room.board.map;
-            console.log('player ammo was', playerObj.ammo)
             if (!!d.ammo && !playerObj.ammo[d.ammo]) {
                 //not regular bomb, no ammo
-                return self.io.emit('misfire', d);
+                return this.io.emit('misfire', d);
             }
             let theCell = map[playerObj.pos.y][playerObj.pos.x];
             if (!!d.ammo) {
@@ -213,27 +260,27 @@ class GameCtrl {
             }
             console.log('player attempted to place ammo #', d.ammo, 'at', playerObj.pos)
             theCell.weaponType = d.ammo;
-            theCell.placedBy = d.player.id;
+            theCell.placedBy = d.player.playerId;
             if (d.ammo === 0) {
                 theCell.countDown = 3000;
             } else if (d.ammo == 1) {
                 theCell.countDown = 500;
             }
             // socket.emit('fired', d)
-            socket.emit('changeAmmo', { player: d.player.id, ammo: d.ammo, subtract: true })
-            self.updateBoard(room.roomId, self)
+            socket.emit('changeAmmo', { player: d.player.playerId, ammo: d.ammo, subtract: true })
+            this.updateBoard(room.roomId)
         })
     }
-    updateBoard(rid, self) {
-        const room = self.rooms.find(r => r.roomId == rid);//the full game room
-        self.io.emit('boardUpd', {
+    updateBoard(rid) {
+        const room = this.rooms.find(r => r.roomId == rid);//the full game room
+        this.io.emit('boardUpd', {
             map: room.board.map,
             room: room.roomId,
             players: room.players,
             // hasBombs:getBombCells(map)
         });
     }
-    getBombCells(m,r) {
+    getBombCells(m, r) {
         let y, x, c;
         for (y = 0; y < m.length; y++) {
             for (x = 0; x < m[0].length; x++) {
@@ -243,11 +290,11 @@ class GameCtrl {
                     c.countDown -= 100;
                     if (!c.countDown) {
                         console.log('cell', x, y, 'goes boom!');
-                        this.io.emit('boom',{
-                            room:r,
-                            x:x,
-                            y:y,
-                            type:c.weaponType
+                        this.io.emit('boom', {
+                            room: r,
+                            x: x,
+                            y: y,
+                            type: c.weaponType
                         })
                         c.placedBy = null;
                         c.weaponType = null;
@@ -264,6 +311,7 @@ class GameCtrl {
             theRoom = new Room(randoId());
             this.rooms.push(theRoom);
         }
+        console.log('trying to place player with id', id)
         let color = theRoom.colors[theRoom.players.length % theRoom.colors.length];
         let np = new Player(id, color);
         theRoom.players.push(np)
@@ -291,12 +339,12 @@ class GameCtrl {
             this.io.emit('hb', n.id);
         })
     }
-    removeUser(u, self) {
-        let remRoom = self.rooms.find(r => r.roomId == u.roomId)
+    removeUser(u) {
+        let remRoom = this.rooms.find(r => r.roomId == u.roomId)
         remRoom.players = remRoom.players.filter(usr => usr.playerId != u.id);
-        self.allNames = self.allNames.filter(q => q.id !== u.id);
-        console.log('users now', self.allNames, 'removed', u.id, 'from room', u.roomId)
-        const theRoom = self.rooms.find(q => q.roomId == u.roomId);
+        this.allNames = this.allNames.filter(q => q.id !== u.id);
+        console.log('users now', this.allNames, 'removed', u.id, 'from room', u.roomId)
+        const theRoom = this.rooms.find(q => q.roomId == u.roomId);
         this.io.emit('boardUpd', {
             map: theRoom.board.map,
             room: theRoom.roomId,

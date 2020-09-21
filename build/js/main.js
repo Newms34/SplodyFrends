@@ -26,7 +26,7 @@ const socket = io(),
             isNamed: false,
             msgTimeout: null,
             player: {
-                id: Math.floor(Math.random() * 999999999999).toString(32),
+                playerId: Math.floor(Math.random() * 999999999999).toString(32),
                 avatar: {
                     color: null
                 },
@@ -34,8 +34,9 @@ const socket = io(),
                     x: 0,
                     y: 0
                 },
-                health: 1,//most skills kill in 1 hit. a few in the future may change this
-                ammo: [-1, 0, 0, 0, 0, 0, 0]//-1 = infinite. Others are as normal
+                hp: 1,//most skills kill in 1 hit. a few in the future may change this
+                ammo: [-1, 0, 0, 0, 0, 0, 0],//-1 = infinite. Others are as normal
+                stunnedCounter:0,
             },
             ammoCat: [{
                 name: 'Bomb',
@@ -79,14 +80,13 @@ const socket = io(),
         },
         methods: {
             doMsg(title, body, lasts) {
-                const self = this;
-                self.alert.title = title;
-                self.alert.body = body;
-                self.alert.show = true;
+                this.alert.title = title;
+                this.alert.body = body;
+                this.alert.show = true;
                 if (!!lasts && typeof lasts == "number") {
                     clearInterval(this.msgTimeout);
-                    this.msgTimeout = setTimeout(function () {
-                        self.alert.show = false;
+                    this.msgTimeout = setTimeout(()=>{
+                        this.alert.show = false;
                     }, lasts)
                 }
             },
@@ -106,9 +106,6 @@ const socket = io(),
                     this.player.ammo[amNum]--;
                 }
                 console.log('would fire', ammo.name)
-            },
-            updatePlayers(p) {
-
             },
             receiveAttack(p) {
 
@@ -146,6 +143,9 @@ const socket = io(),
                     49-57: 1-9, 48:0
                     */
                 const self = this;
+                if(this.player.hp==0){
+                    return false;
+                }
                 if ([65, 68, 83, 87].includes(e.which)) {
                     //movement
                     e.preventDefault();
@@ -161,8 +161,9 @@ const socket = io(),
                         dir = 'right';
                     }
                     socket.emit('tryMove', {
-                        player: self.player.id,
-                        dir: dir
+                        player: this.player.playerId,
+                        dir: dir,
+                        room:this.room.id
                     })
                 } else if ([48, 49, 50, 51, 52, 53, 54, 55, 56, 57].includes(e.which)) {
                     e.preventDefault();
@@ -253,6 +254,9 @@ const socket = io(),
             nuke(x,y){
                 console.log('nuke currently disabled!')
                 return [];
+            },
+            showContents(cell,player){
+                console.log(cell,player)
             }
         },
         computed: {
@@ -261,20 +265,20 @@ const socket = io(),
             }
         },
         created() {
-            socket.on('updatePlayers', p => {
-                this.updatePlayers(p);
-            });
+            // socket.on('updatePlayers', p => {
+            //     this.updatePlayers(p);
+            // });
             socket.on('attack', p => {
                 //incoming attack
                 this.receiveAttack(p);
             });
             socket.on('misfire', p => {
-                if (p.player.id != this.player.id) return false;
+                if (p.player.playerId != this.player.playerId) return false;
                 console.log('attempted', null)
                 return this.doMsg('Out of Ammo', `You have no more ${this.ammoCat[p.ammo].name}s!`, 2000);
             });
             socket.on('changeAmmo', p => {
-                if (p.player != this.player.id) return false;
+                if (p.player != this.player.playerId) return false;
                 this.player.ammo[p.ammo] += p.subtract ? -1 : 1;
                 // console.log(`Got new ${this.ammoCat[p.ammo].name}! Player now`, this.player)
             });
@@ -287,13 +291,13 @@ const socket = io(),
                 this.askReload();
             });
             socket.on('hb', u => {
-                if (this.player.id === u) {
+                if (this.player.playerId === u) {
                     socket.emit('hbr', u)
                 }
             });
             socket.on('greetz', p => {
-                // console.log('placing color for',p.player, 'this player',this.player.id,'same?',p.player.playerId ==this.player.id)
-                if (p.player.playerId != this.player.id) return false;
+                // console.log('placing color for',p.player, 'this player',this.player.playerId,'same?',p.player.playerId ==this.player.playerId)
+                if (p.player.playerId != this.player.playerId) return false;
                 console.log('Gz u connected ^-^. You are', p)
                 this.player.avatar.color = p.player.color;
                 this.room.id = p.room;
@@ -302,9 +306,10 @@ const socket = io(),
 
             socket.on('boardUpd', ub => {
                 if (this.room.id !== ub.room) return false;
-                // console.log('BOARD NOW', ub);
+                console.log('BOARD NOW', ub);
                 this.room.map = ub.map;
                 this.players = ub.players;
+                this.player = Object.assign(this.player,ub.players.find(q=>q.playerId ==this.player.playerId));
             });
             socket.on('boom', b => {
                 if (this.room.id != b.room) return false;
@@ -324,11 +329,16 @@ const socket = io(),
                 }
             })
             socket.on('dead',p=>{
-                if(this.player.id==p){
-                    this.doMsg('You died!',"ono u ded bro",2000)
+                if(this.player.playerId==p.player){
+                    this.player.hp=0;
+                    this.doMsg('You died!',`You died due to a: ${p.reason}`,2000)
                 }
             })
-            socket.emit('hello', this.player.id)
+            // socket.on('shock',s=>{
+            //     if (s.player != this.player.playerId) return false;
+            //     console.log('you been shokt!')
+            // })
+            socket.emit('hello', this.player.playerId)
             window.addEventListener('keyup', this.handleKey)
         }
     }).$mount('#main')

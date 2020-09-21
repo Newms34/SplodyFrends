@@ -91,6 +91,16 @@ body {
         background:radial-gradient( rgba(255,255,255,1), rgba(255,200,0,7),rgba(136, 0, 0, 0.5),rgba(0,0,0,0));
         animation: fadeout 1s linear forwards;
     }
+    & .stunned::after{
+        content:'🗲';
+        position:'absolute';
+        left:0; 
+        top:0;
+        color:#ccf;
+    }
+    &.frozen{
+        background:#ccf!important;
+    }
 }
 .user-panel{
     position:fixed;
