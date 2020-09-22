@@ -17,7 +17,7 @@
             &nbsp;<div v-for='(ammo,i) in ammoCat' class='button is-info ammo-btn' v-bind:title='ammo.name+": "+ammo.desc'><i v-bind:class="'fas fa-'+ammo.icon"></i><div class="ammo-count">{{player.ammo[i]>-1?player.ammo[i]:'∞'}}</div></div>
         </div>
         
-        <div class="game-board">
+        <div class="game-board"  v-bind:class="{'dead':player.hp===0}">
             <div class="game-row" v-for='(gRow,y) in room.map'>
                 <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell.type)+' '+(gCell.animClasses && gCell.animClasses.join(' '))"  v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+JSON.stringify(gCell)'>
                     <!-- <span class="player-cell" v-if='hasPlayer(x,y)'> -->
@@ -39,12 +39,12 @@
             </div>
         </div>
         <div class="notification is-danger-transp alert-box" v-if='alert.show'>
-            <div class="has-text-weight-bold">
+            <div class="has-text-weight-bold is-size-4">
                 <i class="fas fa-exclamation-triangle"></i>&nbsp;{{alert.title}}
             </div>
             <div>{{alert.body}}</div>
         </div>
-        <hr>
+        <!-- <hr>
         <div class="message">
             <div class="message-body">
                 <div v-for='(a,i) in ammoCat'>
@@ -53,8 +53,8 @@
                     <hr>
                 </div>
             </div>
-        </div>
-        {{player}}
+        </div> -->
+        <!-- {{player}} -->
     </div>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12"></script> -->

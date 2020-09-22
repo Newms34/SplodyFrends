@@ -19,7 +19,9 @@ body {
     color: #fff;
     &.alert-box {
         position: fixed;
-        right: 10px;
+        min-width:300px;
+        font-family:'Comic Sans MS';
+        right: 20px;
         top: 10px;
     }
 }
@@ -112,15 +114,9 @@ body {
     }
 }
 
-@keyframes fadeout {
-    from {
-        opacity: 1;
-    }
-    to {
-        opacity: 0;
-    }
+.dead{
+    filter:blur(3px) saturate(0);
 }
-
 
 .boom-horiz .stuff-cell::after {
     content: "";

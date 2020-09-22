@@ -240,7 +240,7 @@ const socket = io(),
                 console.log('EXPLOSON!',e);
                 if(e.deadPlayers.includes(this.player.playerId)){
                     this.player.hp=0;
-                    this.doMsg('Dead!','You died!',3000)
+                    this.doMsg('Dead!','You died!',0)
                 }
             })
             // socket.on('boom', b => {
