@@ -19,9 +19,10 @@
         
         <div class="game-board">
             <div class="game-row" v-for='(gRow,y) in room.map'>
-                <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell.type)"  v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+JSON.stringify(gCell)'>
+                <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell.type)+' '+(gCell.animClasses && gCell.animClasses.join(' '))"  v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+JSON.stringify(gCell)'>
                     <!-- <span class="player-cell" v-if='hasPlayer(x,y)'> -->
-                        <div class='stuff-cell has-text-centered' v-on:click='showContents(gCell,player)' v-bind:class='{"frozen":gCell.slippery,"boom-horiz":gCell.boomStyle==2,"boom-vert":gCell.boomStyle==1,"boom-rad-sm":gCell.boomStyle==3}'>
+                        <div class='stuff-cell has-text-centered' v-on:click='showContents(gCell,player)'>
+                            <!-- {"frozen":gCell.slippery,"boom-horiz":gCell.boomStyle==2,"boom-vert":gCell.boomStyle==1,"boom-rad-sm":gCell.boomStyle==3} -->
                             <!-- stuff for cell -->
                             <!-- any weapons -->
                             <i v-if='gCell.placedBy && (gCell.placedBy==player.playerId || gCell.weaponType<2) && gCell.weaponType!==null' v-bind:class='"has-text-white is-size-3 fas fa-"+ammoCat[gCell.weaponType].icon'  ></i>

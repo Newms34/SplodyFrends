@@ -5,123 +5,172 @@ body {
     margin: 0;
     height: 100%; // padding-top: 40px;
     // background: #000;
-    background:#000;
+    background: #000;
 }
 
 #main {
     padding: 5px;
     min-height: 90vh;
-    top:65px;
+    top: 65px;
     position: absolute;
 }
-.is-danger-transp{
-    background:hsla(0,100%,60%,0.7);
-    color:#fff;
-    &.alert-box{
-        position:fixed;
-        right:10px;
-        top:10px;
+.is-danger-transp {
+    background: hsla(0, 100%, 60%, 0.7);
+    color: #fff;
+    &.alert-box {
+        position: fixed;
+        right: 10px;
+        top: 10px;
     }
 }
 
-.game-row{
+.game-row {
     // display:flex;
-    margin-bottom:-6px;
-    & .game-cell{
-        display:inline-block;
-        width:50px;
-        height:50px;
+    margin-bottom: -6px;
+    & .game-cell {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
         // border:1px solid #000;
-        background-size:contain !important;
-        &.dirt{
-            background:url('../img/dirt.jpg');
+        background-size: contain !important;
+        &.dirt {
+            background: url("../img/dirt.jpg");
         }
-        &.dirt-cracked{
-            background:url('../img/dirtCracked.jpg');
+        &.dirt-cracked {
+            background: url("../img/dirtCracked.jpg");
         }
-        &.rock{
-            background:url('../img/rock.jpg');
+        &.rock {
+            background: url("../img/rock.jpg");
         }
-        &.open{
-            background:url('../img/open.jpg');
+        &.open {
+            background: url("../img/open.jpg");
         }
-        &.prize{
-            background:url('../img/prize.jpg');
+        &.prize {
+            background: url("../img/prize.jpg");
         }
     }
 }
-.stuff-cell{
-    height:50px;
-    width:50px;
-    overflow:hidden;
-    font-size:20pt;
-    position:relative;
+.stuff-cell {
+    height: 50px;
+    width: 50px;
+    overflow: hidden;
+    font-size: 20pt;
+    position: relative;
     text-shadow: 2px 2px 4px #000;
-    & i{
+    & i {
         position: absolute;
-        left:15px;
+        left: 15px;
     }
-    &.boom-horiz::after{
-        content:'';
-        position: absolute;
-        left:0;
-        top:0;
-        width:50px;
-        height:50px;
-        background:linear-gradient(to bottom, rgba(0,0,0,0), rgba(136, 0, 0, 0.5), rgba(255,200,0,7),rgba(255,255,255,1),rgba(255,255,255,1), rgba(255,200,0,7),rgba(136, 0, 0, 0.5),rgba(0,0,0,0));
-        animation: fadeout 1s linear forwards;
+   
+    & .stunned::after {
+        content: "🗲";
+        position: "absolute";
+        left: 0;
+        top: 0;
+        color: #ccf;
     }
-    &.boom-vert::after{
-        content:'';
-        position: absolute;
-        left:0;
-        top:0;
-        width:50px;
-        height:50px;
-        background:linear-gradient(to left, rgba(0,0,0,0), rgba(136, 0, 0, 0.5), rgba(255,200,0,7),rgba(255,255,255,1),rgba(255,255,255,1), rgba(255,200,0,7),rgba(136, 0, 0, 0.5),rgba(0,0,0,0));
-        animation: fadeout 1s linear forwards;
-    }
-    &.boom-rad-sm::after{
-        content:'';
-        position: absolute;
-        left:-15px;
-        top:-15px;
-        width:80px;
-        height:80px;
-        background:radial-gradient( rgba(255,255,255,1), rgba(255,200,0,7),rgba(136, 0, 0, 0.5),rgba(0,0,0,0));
-        animation: fadeout 1s linear forwards;
-    }
-    & .stunned::after{
-        content:'🗲';
-        position:'absolute';
-        left:0; 
-        top:0;
-        color:#ccf;
-    }
-    &.frozen{
-        background:#ccf!important;
+    &.frozen {
+        background: #ccf !important;
     }
 }
-.user-panel{
-    position:fixed;
-    top:0;
-    left:0;
+.user-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
     // height:60px;
-    padding:5px;
+    padding: 5px;
     // min-width:80vw;
-    .shadow-user{
+    .shadow-user {
         text-shadow: 2px 2px 4px #000;
     }
-    .ammo-btn{
-        margin-right:5px;
-        .ammo-count{
-            position: absolute;;
-            right:0;
-            top:0;
+    .ammo-btn {
+        margin-right: 5px;
+        .ammo-count {
+            position: absolute;
+            right: 0;
+            top: 0;
         }
     }
 }
-@keyframes fadeout{
-    from {opacity:1}
-    to {opacity:0}
+
+.boom-radial {
+    & .stuff-cell {
+        background: url("../img/explosion.jpg");
+        background-size: contain;
+    }
+}
+.burned {
+    & .stuff-cell {
+        background: url("../img/burnt.jpg");
+        background-size: contain;
+    }
+}
+.fallout {
+    & .stuff-cell {
+        background: url("../img/fallout.jpg");
+        background-size: contain;
+    }
+}
+
+@keyframes fadeout {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+
+.boom-horiz .stuff-cell::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0),
+        rgba(136, 0, 0, 0.5),
+        rgba(255, 200, 0, 7),
+        rgba(255, 255, 255, 1),
+        rgba(255, 255, 255, 1),
+        rgba(255, 200, 0, 7),
+        rgba(136, 0, 0, 0.5),
+        rgba(0, 0, 0, 0)
+    );
+}
+.boom-vert .stuff-cell::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(
+        to left,
+        rgba(0, 0, 0, 0),
+        rgba(136, 0, 0, 0.5),
+        rgba(255, 200, 0, 7),
+        rgba(255, 255, 255, 1),
+        rgba(255, 255, 255, 1),
+        rgba(255, 200, 0, 7),
+        rgba(136, 0, 0, 0.5),
+        rgba(0, 0, 0, 0)
+    );
+}
+.boom-rad-sm .stuff-cell::after {
+    content: "";
+    position: absolute;
+    left: -15px;
+    top: -15px;
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(
+        rgba(255, 255, 255, 1),
+        rgba(255, 200, 0, 7),
+        rgba(136, 0, 0, 0.5),
+        rgba(0, 0, 0, 0)
+    );
 }

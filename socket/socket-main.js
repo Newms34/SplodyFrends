@@ -2,7 +2,7 @@
 const randoId = () => Math.floor(Math.random() * 9999999999).toString(32),
     getRand = a => a[Math.floor(Math.random() * a.length)],
     colors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'purple', 'white'],
-    devMode = true;
+    devMode = false;
 
 
 class Room {
@@ -26,7 +26,7 @@ class Cell {
         this.placedBy = null;
         this.weaponType = null;
         this.countDown = null;
-        this.boomStyle = 0;
+        this.animClasses= [];
         this.slippery = false;
     }
 }
@@ -64,6 +64,9 @@ class Player {
         this.shielded = false;
         this.pos = { x: 0, y: 0 };
         this.ammo = [-1, 0, 0, 0, 0, 0, 0];//this "version" of the ammo count is the "real" one; the one on the front end is just for convenience!
+        if (devMode) {
+            this.ammo = [-1, 5, 5, 5, 5, 5, 5]
+        }
     }
 }
 class GameCtrl {
@@ -100,7 +103,7 @@ class GameCtrl {
     dist(a, b) {
         return Math.hypot(Math.abs(b.y - a.y), Math.abs(b.x - a.x))
     }
-    movePlayer(p,socket,slipperyMove) {
+    movePlayer(p, socket, slipperyMove) {
         const room = this.rooms.find(r => r.roomId == p.room),//the full game room
             playerObj = room.players.find(pl => pl.playerId == p.player),//our player object
             map = room.board.map,
@@ -183,10 +186,10 @@ class GameCtrl {
                     // targCell.slippery = false;
                     targCell.placedBy = null;
                 }
-                if(targCell.slippery){
-                    console.log('slippery! player sliding in direction',p.dir)
-                    targCell.slippery=false;
-                    this.movePlayer(p,socket,true);
+                if (targCell.slippery) {
+                    console.log('slippery! player sliding in direction', p.dir)
+                    targCell.slippery = false;
+                    this.movePlayer(p, socket, true);
                 }
                 //finally, send updated board
                 this.updateBoard(room.roomId)
@@ -216,9 +219,7 @@ class GameCtrl {
                 2. find out if player can re: blocking (i.e., room Array for them does not have obstruction in that direction)
             */
 
-            this.movePlayer(p,socket);
-            // console.log('TRIED to move! room was', room, 'DIR WAS', p.dir, 'PLAYER WAS', playerObj);
-
+            this.movePlayer(p, socket);
         })
         socket.on('getBoard', ur => {
             this.updateBoard(ur.room);
@@ -281,6 +282,7 @@ class GameCtrl {
         });
     }
     getBombCells(m, r) {
+        //find any cells with bombs
         let y, x, c;
         for (y = 0; y < m.length; y++) {
             for (x = 0; x < m[0].length; x++) {
@@ -288,14 +290,15 @@ class GameCtrl {
                 if (c.weaponType === 0 || c.weaponType == 1) {
                     //bomb or sac
                     c.countDown -= 100;
-                    if (!c.countDown) {
+                    if (c.countDown < 1) {
                         console.log('cell', x, y, 'goes boom!');
-                        this.io.emit('boom', {
-                            room: r,
-                            x: x,
-                            y: y,
-                            type: c.weaponType
-                        })
+                        // this.io.emit('boom', {
+                        //     room: r,
+                        //     x: x,
+                        //     y: y,
+                        //     type: c.weaponType
+                        // })
+                        this.boom({ x, y }, r, m, c.weaponType)
                         c.placedBy = null;
                         c.weaponType = null;
                         c.countDown = null;
@@ -303,6 +306,160 @@ class GameCtrl {
                 }
             }
         }
+    }
+    boom(cell, roomId, map, boomType) {
+        let deadCells = null,
+            deadPlayers = null;
+        if (boomType === 0) {
+            //regular bomb; cross shape up to 10 tiles away
+            console.log('Cell', cell, 'exploded in room', roomId, 'with type Bomb')
+            deadPlayers = this.explodeRegular(cell.y, cell.x, roomId);
+            // deadPlayers = this.findDead(roomId, deadCells);
+            this.updateBoard(roomId);
+            setTimeout(()=>{
+                this.animateCells(roomId,map,['burned','fallout'],[3000,3000],['boom-horiz','boom-vert','boom-rad-sm'])
+            },900)
+            
+        }
+        else if (boomType === 1) {
+            //sac
+            console.log('Cell', cell, 'exploded in room', roomId, 'with type Sac')
+            deadPlayers = this.explodeNuke(cell.y, cell.x, roomId);
+            // deadPlayers = this.findDead(roomId, deadCells);
+            this.updateBoard(roomId);
+            setTimeout(()=>{
+                this.animateCells(roomId,map,['burned','fallout'],[6000,6000],['boom-radial'])
+            },1500)
+        }
+        this.io.emit('explosion', {
+            //data of the explosion, including who was hit
+            roomId: roomId,
+            // deadCells: deadCells,
+            deadPlayers: deadPlayers,
+            center: cell,
+            type: boomType
+        })
+        
+        // setTimeout(()=>{
+        //     //after 1s (time for "explosion" to clear, get new board)
+        //     this.io.emit('boardUpd', { room: this.room.id })
+        // },1000)
+        // console.log(this.rooms.find(q=>q.roomId==room))
+    }
+    explodeNuke(cy, cx, roomId) {
+        //    let [cx, cy] = [y, x];
+        console.log('x', cx, 'y', cy)
+        let room = this.rooms.find(q => q.roomId == roomId),
+            deadP = [];
+        console.log('map', room.board.map.length, 'by', room.board.map[0].length)
+        for (let y = 0; y < room.board.map.length; y++) {
+            for (let x = 0; x < room.board.map[0].length; x++) {
+                let c = room.board.map[y][x];
+                if (this.dist({ x: x, y: y }, { x: cx, y: cy }) < 4) {
+                    c.weaponType = null;
+                    c.placedBy = null;
+                    c.type = '_';
+                    c.animClasses.push('boom-radial');
+                    let candP = room.players.find(p => p.pos.y == y && p.pos.x == x)
+                    if (!!candP && !deadP.includes(candP.playerId)) {
+                        candP.hp=0;
+                        deadP.push(candP.playerId);
+                    }
+                }
+            }
+        }
+        return deadP;
+    }
+    explodeRegular(y, x, roomId) {
+        let remains = {
+            left: 10,
+            right: 10,
+            up: 10,
+            down: 10,
+        },
+            newPos = {
+                left: [y, x],
+                right: [y, x],
+                up: [y, x],
+                down: [y, x]
+            },
+            // deadCells = [[y, x]],
+            deadP = [],
+            room = this.rooms.find(q => q.roomId == roomId),
+            dirs = ['left', 'right', 'up', 'down'];
+        room.board.map[y][x].animClasses.push('boom-rad-sm')
+        let candP = room.players.find(p => p.pos.y == y && p.pos.x == x);
+        if (!!candP) deadP.push(candP.playerId)
+        room.board.map[y][x].boomStyle = 3;
+        //up to 10 in each direction
+        while (Object.values(remains).some(q => q > 0)) {
+            newPos.left[0]--;
+            newPos.right[0]++;
+            newPos.up[1]--;
+            newPos.down[1]++;
+            dirs.forEach(d => {
+                remains[d]--;
+                if (remains[d] > 0) {
+                    //still explosion "charge" left in this direction
+                    let cell = room.board.map[newPos[d][0]] && room.board.map[newPos[d][0]][newPos[d][1]],
+                        candP = room.players.find(p => p.pos.y == newPos[d][0] && p.pos.x == newPos[d][1]);
+                    if (!cell) {
+                        //off board; set to 0
+                        remains[d] = 0;
+                    } else {
+                        if (cell.type == '#' || cell.type == '*') {
+                            //rock and dirt require 1 extra 'charge'
+                            remains[d]--;
+                        }
+                        cell.type = '_';
+                        if (d == 'left' || d == 'right') {
+                            cell.animClasses.push('boom-vert')
+                        } else {
+                            cell.animClasses.push('boom-horiz')
+                        }
+                        if (!!candP && !deadP.includes(candP.playerId)){
+                            candP.hp=0;
+                            deadP.push(candP.playerId);
+                        }
+                    }
+                    // deadCells.push(...newPos[d])
+                }
+            })
+        }
+        return deadP;
+    }
+    animateCells(roomId, map, classes, delays, old) {
+        console.log('room',roomId,'classes',classes,'delays',delays,'Old arr',old)
+        // console.log(delays.shift())
+        // return false;
+        let currClass = classes.shift() || '',
+            currDelay = delays.length?delays.shift():null;
+        for (let y = 0; y < map.length; y++) {
+            for (let x = 0; x < map[0].length; x++) {
+                if (map[y] && map[y][x] && map[y][x].animClasses && old.some(c=>map[y][x].animClasses.includes(c))) {
+                    //an animated cell
+                    map[y][x].animClasses = map[y][x].animClasses.filter(q => !old.includes(q))
+                    map[y][x].animClasses.push(currClass);
+                    //remove old classes, insert the latest new one
+                }
+            }
+        }
+        this.updateBoard(roomId)
+        if (currDelay!==null) {
+            //still delays left to go thru. Note we don't require classes, as the final "delay" can lead to removal of all classes
+            setTimeout(() => {
+                this.animateCells(roomId, map, classes, delays, [currClass])
+            }, currDelay)
+        }
+    }
+    findDead(rid, dead) {
+        const room = this.rooms.find(q => q.roomId == rid);
+        return room.players.filter(p => {
+            return dead.some(c => {
+                // console.log('comparing cell', c, 'and player', p.pos)
+                return c[0] == p.pos.y && c[1] == p.pos.x;
+            });
+        })
     }
     placePlayer(id) {
         let theRoom = this.rooms[this.rooms.length - 1];
@@ -344,12 +501,7 @@ class GameCtrl {
         remRoom.players = remRoom.players.filter(usr => usr.playerId != u.id);
         this.allNames = this.allNames.filter(q => q.id !== u.id);
         console.log('users now', this.allNames, 'removed', u.id, 'from room', u.roomId)
-        const theRoom = this.rooms.find(q => q.roomId == u.roomId);
-        this.io.emit('boardUpd', {
-            map: theRoom.board.map,
-            room: theRoom.roomId,
-            players: theRoom.players
-        });
+        this.updateBoard(u.roomId);
     }
 }
 

@@ -173,82 +173,7 @@ const socket = io(),
             },
             explode(y,x) {
                 // console.log('explosion happens')
-                let remains = {
-                        left: 10,
-                        right: 10,
-                        up: 10,
-                        down: 10,
-                    }, 
-                    leftPos = [x,y],
-                    upPos = [x,y],
-                    rightPos = [x,y],
-                    downPos = [x,y],
-                    deadCells=[[x,y]];
-                
-                this.room.map[x][y].boomStyle=3;
-                //up to 10 in each direction
-                while (remains.up>0 || remains.left>0 || remains.right>0 || remains.down>0) {
-                    if(remains.left>0){
-                        remains.left--;
-                        leftPos[0]--;
-                        let leftCell = this.room.map[leftPos[0]] && this.room.map[leftPos[0]][leftPos[1]];
-                        if(!leftCell){
-                            remains.left=0;
-                        }else{
-                            if(leftCell.type=='#' || leftCell.type=='*'){
-                                remains.left--;
-                            }
-                            leftCell.type='_';
-                            leftCell.boomStyle=1;
-                        }
-                        deadCells.push([...leftPos]);
-                    }
-                    if(remains.right>0){
-                        remains.right--;
-                        rightPos[0]++;
-                        let rightCell = this.room.map[rightPos[0]] && this.room.map[rightPos[0]][rightPos[1]];
-                        if(!rightCell){
-                            remains.right=0;
-                        }else{
-                            if(rightCell.type=='#' || rightCell.type=='*'){
-                                remains.right--;
-                            }
-                            rightCell.type='_';
-                            rightCell.boomStyle=1;
-                        }
-                        deadCells.push([...rightPos]);
-                    }
-                    if(remains.up>0){0
-                        remains.up--;
-                        upPos[1]--;
-                        let upCell = this.room.map[upPos[0]] && this.room.map[upPos[0]][upPos[1]];
-                        if(!upCell){
-                            remains.up=0;
-                        }else{
-                            if(upCell.type=='#' || upCell.type=='*'){
-                                remains.up--;
-                            }
-                            upCell.type='_';
-                            upCell.boomStyle=2;
-                        }
-                        deadCells.push([...upPos]);
-                    }
-                    if(remains.down>0){0
-                        remains.down--;
-                        downPos[1]++;
-                        let downCell = this.room.map[downPos[0]] && this.room.map[downPos[0]][downPos[1]];
-                        if(!downCell){
-                            remains.down=0;
-                        }else{
-                            if(downCell.type=='#' || downCell.type=='*'){
-                                remains.down--;
-                            }
-                            downCell.type='_';
-                            downCell.boomStyle=2;
-                        }
-                        deadCells.push([...downPos]);
-                    }
-                }
+               
                 return deadCells;
             },
             nuke(x,y){
@@ -256,7 +181,7 @@ const socket = io(),
                 return [];
             },
             showContents(cell,player){
-                console.log(cell,player)
+                console.log(cell,player,cell.animClasses && cell.animClasses.join(' '))
             }
         },
         computed: {
@@ -311,23 +236,30 @@ const socket = io(),
                 this.players = ub.players;
                 this.player = Object.assign(this.player,ub.players.find(q=>q.playerId ==this.player.playerId));
             });
-            socket.on('boom', b => {
-                if (this.room.id != b.room) return false;
-                console.log('cell goes boom!', b)
-                this.room.map[b.y][b.x].weaponType = null;
-                this.room.map[b.y][b.x].placedBy = null;
-                if (b.type === 0) {
-                    let deadCells=this.explode(b.x, b.y);
-                    setTimeout(()=>{
-                        socket.emit('killCells',{room:this.room.id,cells:deadCells})
-                    },1000)
-                } else if (b.type === 1) {
-                    let deadCells = this.nuke(b.x, b.y)
-                    setTimeout(()=>{
-                        socket.emit('killCells',{room:this.room.id,cells:deadCells})
-                    },1000)
+            socket.on('explosion',e=>{
+                console.log('EXPLOSON!',e);
+                if(e.deadPlayers.includes(this.player.playerId)){
+                    this.player.hp=0;
+                    this.doMsg('Dead!','You died!',3000)
                 }
             })
+            // socket.on('boom', b => {
+            //     if (this.room.id != b.room) return false;
+            //     console.log('cell goes boom!', b)
+            //     this.room.map[b.y][b.x].weaponType = null;
+            //     this.room.map[b.y][b.x].placedBy = null;
+            //     if (b.type === 0) {
+            //         let deadCells=this.explode(b.x, b.y);
+            //         setTimeout(()=>{
+            //             socket.emit('killCells',{room:this.room.id,cells:deadCells})
+            //         },1000)
+            //     } else if (b.type === 1) {
+            //         let deadCells = this.nuke(b.x, b.y)
+            //         setTimeout(()=>{
+            //             socket.emit('killCells',{room:this.room.id,cells:deadCells})
+            //         },1000)
+            //     }
+            // })
             socket.on('dead',p=>{
                 if(this.player.playerId==p.player){
                     this.player.hp=0;

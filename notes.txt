@@ -44,3 +44,5 @@ BOMB:
  3. emit "boom" socket, with map id, position, type
  4. visual change on front
  5. on back, change appropriate cells, kill players in range
+
+ MOVE explode cell detection to back-end
