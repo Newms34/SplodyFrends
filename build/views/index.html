@@ -14,27 +14,85 @@
     <div id="main">
         <div class="message user-panel">
             <span class="has-text-weight-bold">You: </span><i class="is-size-3 fas fa-user-astronaut shadow-user" v-bind:style="{color:player.avatar.color}"></i>
-            &nbsp;<div v-for='(ammo,i) in ammoCat' class='button is-info ammo-btn' v-bind:title='ammo.name+": "+ammo.desc'><i v-bind:class="'fas fa-'+ammo.icon"></i><div class="ammo-count">{{player.ammo[i]>-1?player.ammo[i]:'∞'}}</div></div>
+            &nbsp;
+            <!-- ammo buttons -->
+            <div v-for='(ammo,i) in ammoCat' class='button ammo-btn' v-bind:class='ammo.cssClass' v-bind:title='ammo.name+": "+ammo.desc' v-on:click="attemptFire(i)"><i v-bind:class="'fas fa-'+ammo.icon"></i>
+                <div class="ammo-key">{{i+1}}</div>
+                <div class="ammo-count">{{player.ammo[i]>-1?player.ammo[i]:'∞'}}</div>
+            </div>
+            <!-- latency dot -->
+            <div id="latency-dot" v-bind:style='{"background":latencyColor}' v-bind:title='"Last latency measure: "+lastLatency+"ms"'></div>
         </div>
-        
-        <div class="game-board"  v-bind:class="{'dead':player.hp===0}">
-            <div class="game-row" v-for='(gRow,y) in room.map'>
-                <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell.type)+' '+(gCell.animClasses && gCell.animClasses.join(' '))"  v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+JSON.stringify(gCell)'>
-                    <!-- <span class="player-cell" v-if='hasPlayer(x,y)'> -->
-                        <div class='stuff-cell has-text-centered' v-on:click='showContents(gCell,player)'>
-                            <!-- {"frozen":gCell.slippery,"boom-horiz":gCell.boomStyle==2,"boom-vert":gCell.boomStyle==1,"boom-rad-sm":gCell.boomStyle==3} -->
-                            <!-- stuff for cell -->
-                            <!-- any weapons -->
-                            <i v-if='gCell.placedBy && (gCell.placedBy==player.playerId || gCell.weaponType<2) && gCell.weaponType!==null' v-bind:class='"has-text-white is-size-3 fas fa-"+ammoCat[gCell.weaponType].icon'  ></i>
-                            
-                            <!-- players -->
-                            <i v-if='hasPlayer(x,y)' class="is-size-3 fas" v-bind:class="{'stunned':player.stunnedCounter>0,'fa-user-astronaut':player.hp,'fa-skull':!player.hp}" v-bind:style="{color:hasPlayer(x,y).color}"></i>
-                            <span v-if='player.stunnedCounter'></span>
-                            <!-- <i v-if='!hasPlayer(x,y)'>&nbsp;</i> -->
-                        </div>
+        <div class="columns">
+            <div class="column is-four-fifths">
 
-                    <!-- </span>
+
+                <div class="game-board" v-bind:class="{'dead':player.hp===0}">
+                    <div class="game-row" v-for='(gRow,y) in room.map'>
+                        <div v-for='(gCell,x) in gRow' v-bind:class="'game-cell '+ cellBg(gCell.type)+' '+(gCell.animClasses && gCell.animClasses.join(' '))" v-bind:id='"pc-"+x+"-"+y' v-bind:title='"pc-"+x+"-"+y+":"+JSON.stringify(gCell)'>
+                            <!-- <span class="player-cell" v-if='hasPlayer(x,y)'> -->
+                            <div class='stuff-cell has-text-centered' v-on:click='showContents(gCell,player)'>
+                                <!-- {"frozen":gCell.slippery,"boom-horiz":gCell.boomStyle==2,"boom-vert":gCell.boomStyle==1,"boom-rad-sm":gCell.boomStyle==3} -->
+                                <!-- stuff for cell -->
+                                <!-- any weapons -->
+                                <i v-if='gCell.placedBy && (gCell.placedBy==player.playerId || gCell.weaponType<2) && gCell.weaponType!==null' v-bind:class='"has-text-white is-size-3 fas fa-"+ammoCat[gCell.weaponType].icon'></i>
+
+                                <!-- players -->
+                                <i v-if='hasPlayer(x,y)' class="is-size-3 fas" v-bind:class="{'fa-user-astronaut':player.hp,'fa-skull':!player.hp}" v-bind:style="{color:hasPlayer(x,y).color}">
+                                    <i class="fa fa-shield-alt shielded" v-if='player.hp>1'></i>
+                                    <i class="fa fa-bolt stunned" v-if='player.stunnedCounter>1'></i>
+                                    <!-- v-if='player.stunnedCounter>1' -->
+                                </i>
+                            </div>
+
+                            <!-- </span>
                     <span v-if='!hasPlayer(x,y)'></span> -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column is-one-fifth">
+                <div class="message">
+
+                    <div class="message-header">SplodyFrends</div>
+                    <div class="message-body">
+                        <div class='is-italic'>W,A,S,D to move. 1-7 (or click!) to use skills</div>
+                        <hr>
+                        <div class="message is-success has-background-grey-lighter">
+                            <div class=" message-header">Score</div>
+                            <div class="message-body">
+                                {{player.score}} <span class="has-text-grey">(Not yet implemented!)</span>
+                            </div>
+                        </div>
+                        <div class="message is-success has-background-grey-lighter">
+                            <div class=" message-header">Status</div>
+                            <div class="message-body">
+                                <div v-if='player.stunnedCounter==0 && player.hp==1' class='has-text-grey'>(No current status effects)</div>
+                                <div v-if='player.stunnedCounter>0'><i class="fa fa-bolt"></i> You are <b>stunned</b>!</div>
+                                <div v-if='player.hp>1'><i class="fa fa-shield-alt"></i> You've equipped a <b>shield</b>!</div>
+                                <div v-if='!player.hp'><i class="fa fa-skull"></i> You're <b>dead</b>!</div>
+                            </div>
+                        </div>
+                        <div class="message is-success has-background-grey-lighter">
+                            <div class=" message-header">Weapon Library</div>
+                            <div class="message-body">
+                                <div v-for='(ammo,i) in ammoCat' class='columns is-multiline'>
+                                    <div class="column is-one-fifth has-text-centered">
+                                        <i v-bind:class="'fa fa-'+ammo.icon"></i>
+                                        <div>{{ammo.name}}</div>
+                                    </div>
+                                    <div class="column is-four-fifth is-size-7">
+                                        <div class="is-fullwidth is-size-6">
+                                            <span v-for='(ef,n) in statusEffects' v-if='ammo.effects[n]==1' v-bind:title='ef.desc' style='margin-right:4px;'>
+                                                <i v-bind:class="'fa fa-'+ef.icon"></i>
+                                            </span>
+                                        </div>
+                                        {{ammo.desc}}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -44,20 +102,8 @@
             </div>
             <div>{{alert.body}}</div>
         </div>
-        <!-- <hr>
-        <div class="message">
-            <div class="message-body">
-                <div v-for='(a,i) in ammoCat'>
-                    <div class="has-text-weight-bold"><i v-bind:class="'fas fa-'+a.icon"></i>&nbsp;{{a.name}}</div>
-                    <div><button class="button is-link is-small" v-on:click='fire(i)'><i class="fas fa-check"></i></button>{{a.desc}}</div>
-                    <hr>
-                </div>
-            </div>
-        </div> -->
-        <!-- {{player}} -->
     </div>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/bulmabox@7.0.10/bulmabox.min.js"></script>
     <script src="/js/all.min.js"></script>
 </body>

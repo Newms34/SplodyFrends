@@ -46,3 +46,7 @@ BOMB:
  5. on back, change appropriate cells, kill players in range
 
  MOVE explode cell detection to back-end
+
+ switch move from keyup to keydown, all others remain keyup
+
+ test with multiple users (FF).

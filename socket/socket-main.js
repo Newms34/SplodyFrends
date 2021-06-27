@@ -2,7 +2,7 @@
 const randoId = () => Math.floor(Math.random() * 9999999999).toString(32),
     getRand = a => a[Math.floor(Math.random() * a.length)],
     colors = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'purple', 'white'],
-    devMode = false;
+    devMode = process.env.NODE_ENV!=='production';
 
 
 class Room {
@@ -10,9 +10,10 @@ class Room {
     each 'room' is a separate instance of the game.
     it includes the players IN that room, a custom-shuffled list of colors, and, of course, the board itself.
     */
-    constructor(id) {
+    constructor(id,name) {
         this.roomId = id;
         this.board = new Board();
+        this.name = name||"Anonymous's Room";
         this.players = [];
         this.created = Date.now();
         this.colors = colors.sort((a, b) => Math.random() > 0.5 ? 1 : -1)
@@ -61,10 +62,12 @@ class Player {
         this.playerId = id;
         this.color = color;
         this.stunnedCounter = 0;
-        this.shielded = false;
+        this.shieldCounter = 0;
+        this.hp=1;
         this.pos = { x: 0, y: 0 };
         this.ammo = [-1, 0, 0, 0, 0, 0, 0];//this "version" of the ammo count is the "real" one; the one on the front end is just for convenience!
         if (devMode) {
+            //if devmode, we get some "test" ammo!
             this.ammo = [-1, 5, 5, 5, 5, 5, 5]
         }
     }
@@ -89,6 +92,7 @@ class GameCtrl {
             // console.log(room.roomId)
             this.getBombCells(room.board.map, room.roomId)
             room.players.forEach(p => {
+                //elapse stun fx
                 if (p.stunnedCounter > 0) {
                     p.stunnedCounter -= 100;
                     if (p.stunnedCounter <= 100) {
@@ -96,6 +100,16 @@ class GameCtrl {
                     }
                 } else {
                     p.stunnedCounter = 0;
+                }
+                //elapse shield fx (if applicable)
+                if (p.shieldCounter > 0) {
+                    p.shieldCounter -= 100;
+                    if (p.shieldCounter <= 100 && p.hp==2) {
+                        p.hp=1;
+                        this.updateBoard(room.roomId);
+                    }
+                } else {
+                    p.shieldCounter = 0;
                 }
             })
         }
@@ -160,14 +174,17 @@ class GameCtrl {
                     let trapType = targCell.weaponType - 2;
                     console.log('user', p, 'triggered a trap!', targCell, trapType)
                     if (trapType == 1) {
-                        socket.emit('dead', { player: p.player, reason: 'fire trap' });
+                        playerObj.hp--;
+                        if(playerObj.hp<=0){
+                            socket.emit('dead', {reason: 'fire trap', killer:targCell.placedBy||'Unknown'});
+                        }
                     } else if (trapType == 2) {
                         console.log('ice!')
                         targCell.slippery = true;
                     } else if (trapType == 3) {
                         console.log('shock!')
                         playerObj.stunnedCounter = 3000;
-                        socket.emit('shock', { player: p.player, amt: 3000 });
+                        // socket.emit('shock', { player: p.player, amt: 3000 });
                     } else if (trapType == 4) {
                         // const dirtyCells = [];
                         for (let y = 0; y < map.length; y++) {
@@ -224,42 +241,32 @@ class GameCtrl {
         socket.on('getBoard', ur => {
             this.updateBoard(ur.room);
         })
-        socket.on('killCells', k => {
-            let room = this.rooms.find(q => q.roomId == k.room);
-            console.log(k.cells.length);
-            k.cells.forEach(p => {
-                // console.log('trying to find cell',p)
-                let c = room.board.map[p[0]] && room.board.map[p[0]][p[1]]
-                if (!c) return false;
-                c.type = '_';
-                //remove ice, destroy bombs if present
-                c.slippery = false;
-                if (c.weaponType === 0 || c.weaponType === 1) {
-                    c.weaponType = null;
-                }
-                room.players.forEach(pl => {
-                    if (pl.pos.x == p[1] && pl.pos.y == p[0]) {
-                        socket.emit('dead', { player: pl.playerId, reason: 'bomb' });
-                    }
-                })
-            })
-            this.updateBoard(k.room);
-        })
         socket.on('attemptFire', d => {
             const playerRoom = this.allNames.find(q => q.id == d.player.playerId).roomId,
                 room = this.rooms.find(r => r.roomId == playerRoom),//the full game room
                 playerObj = room.players.find(pl => pl.playerId == d.player.playerId),//our player object
                 map = room.board.map;
+
+            if(playerObj.shieldCounter>0){
+                //player is shielded and cannot place bombs
+                return socket.emit('shieldLock');
+            }
             if (!!d.ammo && !playerObj.ammo[d.ammo]) {
                 //not regular bomb, no ammo
-                return this.io.emit('misfire', d);
+                return socket.emit('misfire', d.ammo);
             }
             let theCell = map[playerObj.pos.y][playerObj.pos.x];
             if (!!d.ammo) {
                 //first, decrease ammo count by 1 if not reg bomb
                 playerObj.ammo[d.ammo]--;
             }
-            console.log('player attempted to place ammo #', d.ammo, 'at', playerObj.pos)
+            console.log('player attempted to use ammo #', d.ammo, 'at', playerObj.pos)
+            if(d.ammo==2){
+                //shield!
+                playerObj.hp=2;
+                playerObj.shieldCounter=5000;
+                return this.updateBoard(playerRoom);
+            }
             theCell.weaponType = d.ammo;
             theCell.placedBy = d.player.playerId;
             if (d.ammo === 0) {
@@ -268,8 +275,11 @@ class GameCtrl {
                 theCell.countDown = 500;
             }
             // socket.emit('fired', d)
-            socket.emit('changeAmmo', { player: d.player.playerId, ammo: d.ammo, subtract: true })
+            socket.emit('changeAmmo', {ammo: d.ammo, subtract: true })
             this.updateBoard(room.roomId)
+        });
+        socket.on('healthPing',d=>{
+            socket.emit('healthPingResponse',d)
         })
     }
     updateBoard(rid) {
@@ -346,6 +356,23 @@ class GameCtrl {
         // },1000)
         // console.log(this.rooms.find(q=>q.roomId==room))
     }
+    dmgPlayer(room,x,y,deadPArr){
+        /*note that this is used for shielded AND unshielded players. 
+        It removes 1 hp for "hit" players
+        For with a shield, that leaves them at 1 hp. 
+        For players without a shield, that leaves them at 0 hp (dead)
+        */
+        let candP = room.players.find(p => p.pos.y == y && p.pos.x == x);
+        if(!!candP){
+            //hit!
+            console.log('before subtr, hp was',candP.hp)
+            candP.hp--;
+            console.log('player',candP.playerId,'was hit! hp now',candP.hp);
+            if(candP.hp===0 && !deadPArr.includes(candP.playerId)){
+                deadPArr.push(candP.playerId)
+            }
+        }
+    }
     explodeNuke(cy, cx, roomId) {
         //    let [cx, cy] = [y, x];
         console.log('x', cx, 'y', cy)
@@ -360,11 +387,13 @@ class GameCtrl {
                     c.placedBy = null;
                     c.type = '_';
                     c.animClasses.push('boom-radial');
-                    let candP = room.players.find(p => p.pos.y == y && p.pos.x == x)
-                    if (!!candP && !deadP.includes(candP.playerId)) {
-                        candP.hp=0;
-                        deadP.push(candP.playerId);
-                    }
+
+                    this.dmgPlayer(room,x,y,deadP);
+                    // let candP = room.players.find(p => p.pos.y == y && p.pos.x == x)
+                    // if (!!candP && !deadP.includes(candP.playerId)) {
+                    //     candP.hp=0;
+                    //     deadP.push(candP.playerId);
+                    // }
                 }
             }
         }
@@ -401,8 +430,7 @@ class GameCtrl {
                 remains[d]--;
                 if (remains[d] > 0) {
                     //still explosion "charge" left in this direction
-                    let cell = room.board.map[newPos[d][0]] && room.board.map[newPos[d][0]][newPos[d][1]],
-                        candP = room.players.find(p => p.pos.y == newPos[d][0] && p.pos.x == newPos[d][1]);
+                    let cell = room.board.map[newPos[d][0]] && room.board.map[newPos[d][0]][newPos[d][1]];
                     if (!cell) {
                         //off board; set to 0
                         remains[d] = 0;
@@ -417,10 +445,7 @@ class GameCtrl {
                         } else {
                             cell.animClasses.push('boom-horiz')
                         }
-                        if (!!candP && !deadP.includes(candP.playerId)){
-                            candP.hp=0;
-                            deadP.push(candP.playerId);
-                        }
+                        this.dmgPlayer(room,newPos[d][0],newPos[d][1],deadP);
                     }
                     // deadCells.push(...newPos[d])
                 }

@@ -47,7 +47,7 @@ const socketConfig = require('./socket/socket-main'),
 // console.log(sc)
 
 const startServer = function () {
-    server.listen(process.env.PORT || 8080);
+    server.listen(process.env.PORT || 9000);
     server.on('error', function (err) {
         console.log('Oh no! Err:', err)
     });

@@ -1,11 +1,5 @@
 const express = require('express');
-const router = express.Router(),
-    _ = require('lodash'),
-    // mongoose = require('mongoose'),
-    axios = require('axios'),
-    fs = require('fs');
-// mongoose.Promise = Promise;
-
+const router = express.Router();
 
 const routeExp = function (io) {
     this.authbit = (req, res, next) => {
@@ -17,18 +11,7 @@ const routeExp = function (io) {
         } else {
             res.status(401).send('err')
         }
-    };
-    router.get('/something',(req,res,next)=>{
-        //get number of athletes starting at n
-        mongoose.model('Athlete').find({},null,{sort:{date:-1}}).exec((err,aths)=>{
-            console.log(err,aths)
-            const st = req.query.n ||0,
-            en = st+20;
-            const athsOut =  aths && aths.length? aths.slice(st,en):[];
-            res.send(athsOut)
-        })
-    })
-    
+    };    
     return router;
 }
 

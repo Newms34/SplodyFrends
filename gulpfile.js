@@ -7,8 +7,6 @@ const jshint = require('gulp-jshint'),
     concat = require('gulp-concat'),
     rename = require('gulp-rename'),
     terser = require('gulp-terser'),
-    kid = require('child_process'),
-    ps = require('ps-node'),
     cleany = require('gulp-clean-css'),
     babel = require('gulp-babel'),
     addSrc = require('gulp-add-src'),
@@ -16,6 +14,9 @@ const jshint = require('gulp-jshint'),
     th2 = require('through2'),
     chalk = require('chalk'),
     cleanF = require('gulp-clean'),
+    replace = require('gulp-replace'),
+    devVue = 'https://cdn.jsdelivr.net/npm/vue/dist/vue.js',
+    prodVue = 'https://cdn.jsdelivr.net/npm/vue@2.6.12',
     cachebust = require('gulp-cachebust'),
     cabu = new cachebust();
 let sassStart = 0,
@@ -109,15 +110,21 @@ gulp.task('html', function () {
     return gulp
         .src(['build/views/*.html', 'build/views/**/*.html', 'build/views/**/**/*.html'])
         .pipe(cabu.references())
+        .pipe(replace(devVue,function(m){
+            if(process.env.NODE_ENV && process.env.NODE_ENV=='production'){
+                return prodVue;
+            }
+            return m;
+        }))
         .pipe(gulp.dest('./views'))
 })
 
-// gulp.task('imgs',function(){
-//     return gulp
-//         .src(['build/imgs/*','build/imgs/**/*'])
-//         // .pipe(cb.references())
-//         .pipe(gulp.dest('./public/img'))
-// })
+gulp.task('imgs', function () {
+    return gulp
+        .src(['build/img/*.*'])
+        .pipe(gulp.dest('public/img'))
+})
+
 
 // Compile Our Sass
 gulp.task('sass', function () {
@@ -196,31 +203,6 @@ gulp.task('scripts', function () {
         .pipe(gulp.dest('public/js'));
 });
 
-gulp.task('checkDB', function () {
-    // let alreadyRan = false;
-    return new Promise(function (resolve, reject) {
-        if (process.platform == 'win32' && process.env.USERNAME == 'Newms') {
-            drawTitle('Checking MongoDB Status')
-            // console.log('Checking to see if mongod already running!');
-            ps.lookup({
-                command: 'mongod'
-            }, function (e, f) {
-                // console.log('result of run request',e,f)
-                if (!f.length) {
-                    //database not already running, so start it up!
-                    kid.exec('c: && cd C:\\Program Files\\MongoDB\\Server\\4.2\\bin && start mongod -dbpath "e:\\mongodata" && pause', function (err, stdout, stderr) {
-                        if (err) console.log('Uh oh! An error of "', err, '" prevented the DB from starting!');
-                    })
-                    resolve();
-                } else {
-                    console.log('mongod running!')
-                    resolve();
-                }
-            })
-        }
-    });
-})
-
 let currColInd = 0;
 
 const drawTitle = (t, w) => {
@@ -257,14 +239,14 @@ const drawTitle = (t, w) => {
 gulp.task('watch', function () {
     let alreadyRan = false;
     drawTitle('Watching Front-End scripts, Back-End Scripts, and CSS', true)
-    gulp.watch(['build/js/**/*.js', 'build/js/*.js','build/views/*.html', 'build/views/**/*.html', 'build/views/**/**/*.html','build/scss/*.scss', 'build/scss/**/*.scss'], gulp.series('clean', 'lint', 'scripts','sass','html'));
+    gulp.watch(['build/js/**/*.js', 'build/js/*.js','build/views/*.html', 'build/views/**/*.html', 'build/views/**/**/*.html','build/scss/*.scss', 'build/scss/**/*.scss','build/img/*.*'], gulp.series('clean', 'lint', 'scripts','sass','html','imgs'));
     gulp.watch(['routes/*.js', 'routes/**/*.js', 'models/*.js', 'models/**/*.js'], gulp.series('lintBE'))
     // gulp.watch(['build/scss/*.scss', 'build/scss/**/*.scss'], gulp.series('sass'));
     // gulp.watch(['build/views/*.html', 'build/views/**/*.html', 'build/views/**/**/*.html'], gulp.series('html'))
 });
 
 //task to simply create everything without actually watching or starting the DB
-gulp.task('render', gulp.series('clean', 'lint', 'lintBE', 'sass', 'scripts', 'html'))
+gulp.task('render', gulp.series('clean', 'lint', 'lintBE', 'sass', 'scripts', 'html','imgs'))
 
 // Default Task
-gulp.task('default', gulp.series('clean', 'lint', 'lintBE', 'sass', 'scripts', 'html', 'checkDB', 'watch'));
+gulp.task('default', gulp.series('clean', 'lint', 'lintBE', 'sass', 'scripts', 'html', 'imgs','watch'));

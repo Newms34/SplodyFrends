@@ -1,20 +1,22 @@
+;(function() {
+"use strict";
+
 class Trap {
     constructor(player, type) {
         this.player = player;//id of player that placed it. if == this player, trap is visible and does NOT trigger
         this.type = type;
     }
     trigger(player, cell, other) {
-        let {type} = this;
-        if (type === 'fire') {
+        if (this.type == 'fire') {
             //fire: kill
             player.health = 0;
-        } else if (type === 'ice') {
+        } else if (this.type == 'ice') {
             //ice: slide
             cell = 'S';//S for Slippery
-        } else if (type === 'shock') {
-            //shock: no movement
+        } else if (this.type == 'shock') {
+            //ice: slide
             player.stunned = true;
-        } else if (type === 'mud') {
+        } else if (this.type == 'mud') {
             //ice: slide
             other = 'mud';
         }
@@ -115,10 +117,9 @@ const socket = io(),
         },
         methods: {
             doMsg(title, body, lasts) {
-                // this.alert.title = title;
-                // this.alert.body = body;
-                // this.alert.show = true;
-                this.alert = { ...this.alert, title, body, show: true };    
+                this.alert.title = title;
+                this.alert.body = body;
+                this.alert.show = true;
                 if (!!lasts && typeof lasts == "number") {
                     clearInterval(this.msgTimeout);
                     this.msgTimeout = setTimeout(() => {
@@ -131,6 +132,9 @@ const socket = io(),
                     player: this.player,
                     ammo: amNum
                 })
+            },
+            fire(amNum) {
+                console.log('removed this fn!')
             },
             askReload() {
                 this.askingReload = true;
@@ -284,3 +288,4 @@ const socket = io(),
             }, 100)
         }
     }).$mount('#main')
+}());

@@ -13,6 +13,7 @@ body {
     min-height: 90vh;
     top: 65px;
     position: absolute;
+    width:100%;
 }
 .is-danger-transp {
     background: hsla(0, 100%, 60%, 0.7);
@@ -25,7 +26,9 @@ body {
         top: 10px;
     }
 }
-
+.game-board{
+    width:1000px;
+}
 .game-row {
     // display:flex;
     margin-bottom: -6px;
@@ -64,15 +67,21 @@ body {
         left: 15px;
     }
    
-    & .stunned::after {
-        content: "🗲";
-        position: "absolute";
-        left: 0;
-        top: 0;
+    & .stunned{
+        position: absolute;
+        left: 2px;
+        top: 2px;
         color: #ccf;
+        text-shadow:0 0 8px #000;
     }
     &.frozen {
         background: #ccf !important;
+    }
+    & .shielded{
+        position:absolute;
+        left:2px;
+        top:2px;
+        color:#fec;
     }
 }
 .user-panel {
@@ -87,10 +96,21 @@ body {
     }
     .ammo-btn {
         margin-right: 5px;
+        .ammo-key {
+            position: absolute;
+            left: 0;
+            top: 0px;
+            color:#fff;
+            border: 2px outset #aaa;
+            background:#aaa;
+            width:15px;
+            height:15px;
+            line-height: 8px;
+        }
         .ammo-count {
             position: absolute;
             right: 0;
-            top: 0;
+            top: -7px;
         }
     }
 }
@@ -169,4 +189,27 @@ body {
         rgba(136, 0, 0, 0.5),
         rgba(0, 0, 0, 0)
     );
+}
+#latency-dot{
+    display:inline-block;
+    border-radius:50%;
+    width:12px;
+    height:12px;
+}
+.is-brown{
+    background:rgb(99, 95, 62);
+    color:#fff;
+    &:hover{
+        background:rgb(89, 85, 52);
+        color:#fff;
+    }
+}
+
+.is-shield{
+    background:rgb(233, 176, 63);
+    color:#222;
+    &:hover{
+        background:rgb(223, 166, 53);
+        color:#222;
+    }
 }
